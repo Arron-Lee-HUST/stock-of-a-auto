@@ -33,6 +33,15 @@ class MonitorTests(unittest.TestCase):
             {"sh600000": snapshot}, {"sh600000": signal}, {}, market)
         self.assertEqual(report.events[0].action, "no_new_entries")
 
+    def test_auction_phase_does_not_use_previous_close_for_exit(self):
+        snapshot = MarketSnapshot("sh600000", trade_date="2024-01-02", close=8.0)
+        position = TradePosition("sh600000", 10.0, 100, entry_date="2024-01-01")
+        market = MarketSnapshot("market", market_limit_up_count=50,
+                                market_limit_down_count=2, market_max_streak=5)
+        report = MarketMonitor().evaluate("2024-01-02", "09:23:00",
+            {"sh600000": snapshot}, {}, {"sh600000": position}, market)
+        self.assertEqual(report.events[0].action, "hold")
+
     def test_t1_blocks_same_day_exit_signal(self):
         snapshot = MarketSnapshot("sh600000", trade_date="2024-01-02", close=9.0, price=9.0)
         position = TradePosition("sh600000", 10.0, 100, entry_date="2024-01-02")
