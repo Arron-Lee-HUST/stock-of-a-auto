@@ -84,6 +84,6 @@ print(signal.eligible, signal.score, signal.reasons, signal.warnings)
 - `tests/`：单元测试。
 - `docs/strategy.md`：策略细节、数据契约与边界说明。
 
-## 重要边界
+## 项目阶段\n\n完整阶段交付与生产化边界见 [docs/roadmap.md](docs/roadmap.md)。\n\n## 重要边界
 
 当前版本不绑定行情供应商，不含新闻爬虫、券商交易接口或自动下单。数据接入和回测假设详见 `docs/data-backtest.md`。当前回测是研究级日频框架，交易日历、个股特殊涨跌幅规则、复权处理和费用参数仍需按数据源与实际交易规则校准。
