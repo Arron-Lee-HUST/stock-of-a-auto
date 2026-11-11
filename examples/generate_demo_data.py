@@ -49,7 +49,9 @@ def main():
     write_csv(root / "flow.csv", ["symbol", "trade_date", "main_net_inflow"], flow)
     write_csv(root / "sector.csv", ["symbol", "trade_date", "sector_rank", "sector_limit_up_count",
              "sector_leader_limit_up", "catalyst"], sector)
-    write_csv(root / "paper-orders.csv", ["order_id", "symbol", "side", "quantity", "submitted_date", "trade_date"],\n              [["demo-buy-001", symbols[0], "BUY", 100, dates[-2], dates[-1]]])\n    print(f"Synthetic demo data written to {root}; not real market data.")
+    write_csv(root / "paper-orders.csv", ["order_id", "symbol", "side", "quantity", "submitted_date", "trade_date"],
+              [["demo-buy-001", symbols[0], "BUY", 100, dates[-2], dates[-1]]])
+    print(f"Synthetic demo data written to {root}; not real market data.")
 
 
 if __name__ == "__main__":
