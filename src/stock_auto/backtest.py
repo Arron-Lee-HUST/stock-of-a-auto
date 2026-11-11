@@ -108,7 +108,7 @@ class BacktestEngine:
                 rows = visible.get(symbol, ())
                 if rows and exit_selector(date, position, rows):
                     bar = tomorrow.get(symbol)
-                    if bar is None or bar.is_suspended or not cfg.allow_limit_down_sell and _at_limit(bar, bar.open, -1):
+                    if bar is None or bar.is_suspended or not cfg.allow_limit_down_sell and _at_limit(bar, bar.open, -1, today.get(symbol).close if today.get(symbol) else None):
                         rejected.append(f"{next_date} {symbol}: exit blocked (missing/suspended/limit-down)")
                         continue
                     exit_price = bar.open * (1 - cfg.slippage_rate)
@@ -129,7 +129,7 @@ class BacktestEngine:
                 if bar is None or bar.is_suspended:
                     rejected.append(f"{next_date} {symbol}: entry blocked (missing/suspended)")
                     continue
-                if not cfg.allow_limit_up_buy and _at_limit(bar, bar.open, 1):
+                if not cfg.allow_limit_up_buy and _at_limit(bar, bar.open, 1, today.get(symbol).close if today.get(symbol) else None):
                     rejected.append(f"{next_date} {symbol}: entry blocked (limit-up)")
                     continue
                 price = bar.open * (1 + cfg.slippage_rate)
