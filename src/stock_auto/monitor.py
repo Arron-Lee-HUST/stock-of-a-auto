@@ -59,6 +59,9 @@ class MarketMonitor:
                                                    ["行情交易日期与监控日期不一致"]))
                 continue
             if symbol in positions:
+                if auction_phase:
+                    report.events.append(MonitorEvent(symbol, "position", "hold", ["竞价阶段不使用上一交易日收盘价触发盘中退出"]))
+                    continue
                 if positions[symbol].entry_date and positions[symbol].entry_date >= trade_date:
                     report.events.append(MonitorEvent(symbol, "position", "hold", ["T+1 约束：当日买入的持仓不可当日卖出"]))
                     continue
