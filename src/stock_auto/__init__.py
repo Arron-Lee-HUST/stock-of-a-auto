@@ -7,6 +7,7 @@ from .context import AuctionQuote, CapitalFlow, CsvPointInTimeContextProvider, I
 from .scanner import Candidate, CandidateScanner, ScanResult, build_snapshot
 from .strategy_backtest import ThreeDriveBacktest
 from .monitor import MarketMonitor, MonitorEvent, MonitorReport
+from .service import JsonlAlertSink, MonitorService, TradingCalendar
 from .portfolio_risk import (PortfolioRiskDecision, PortfolioRiskManager, PortfolioRiskState, RiskLimits)
 from .paper import PaperBroker, PaperAccount, PaperFill, PaperOrder, PaperPosition
 from .validation import DataQualityReport, validate_bars
@@ -23,7 +24,7 @@ __all__ = [
     "DailyBar", "MarketDataProvider", "TushareMarketDataProvider",
     "AuctionQuote", "CapitalFlow", "CsvPointInTimeContextProvider", "IntradayQuote", "PointInTimeContextProvider", "SectorContext",
     "Candidate", "CandidateScanner", "ScanResult", "ThreeDriveBacktest", "build_snapshot",
-    "MarketMonitor", "MonitorEvent", "MonitorReport", "PortfolioRiskDecision",
+    "MarketMonitor", "MonitorEvent", "MonitorReport", "MonitorService", "TradingCalendar", "JsonlAlertSink", "PortfolioRiskDecision",
     "PortfolioRiskManager", "PortfolioRiskState", "RiskLimits",
     "PaperBroker", "PaperAccount", "PaperFill", "PaperOrder", "PaperPosition",
     "DataQualityReport", "validate_bars", "write_backtest_reports", "write_dashboard", "write_json", "write_scan_reports", "MarketSnapshot", "Signal", "StrategyConfig", "Trade", "TradePosition",
