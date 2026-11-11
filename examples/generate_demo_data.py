@@ -33,7 +33,7 @@ def main():
         for day_index, day in enumerate(dates):
             previous = close
             close = previous * 1.04
-            volume = 20000 if day_index == len(dates) - 1 else 10000
+            volume = int(10000 * (1.10 ** day_index))
             daily.append([symbol, day, round(previous * 1.01, 4), round(close * 1.045, 4),
                           round(previous * 0.995, 4), round(close, 4), volume,
                           round(volume * close, 2), round(previous, 4), 0, 0.10])
@@ -49,7 +49,7 @@ def main():
     write_csv(root / "flow.csv", ["symbol", "trade_date", "main_net_inflow"], flow)
     write_csv(root / "sector.csv", ["symbol", "trade_date", "sector_rank", "sector_limit_up_count",
              "sector_leader_limit_up", "catalyst"], sector)
-    print(f"Synthetic demo data written to {root}; not real market data.")
+    write_csv(root / "paper-orders.csv", ["order_id", "symbol", "side", "quantity", "submitted_date", "trade_date"],\n              [["demo-buy-001", symbols[0], "BUY", 100, dates[-2], dates[-1]]])\n    print(f"Synthetic demo data written to {root}; not real market data.")
 
 
 if __name__ == "__main__":
