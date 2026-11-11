@@ -21,9 +21,9 @@ class StrategyBacktestTests(unittest.TestCase):
     def test_runner_uses_context_factory_and_executes_orders(self):
         bars = []
         close = 10.0
-        for day in range(1, 27):
+        for day in range(1, 28):
             prev = close
-            close = prev * (1.025 if day == 25 else 1.01)
+            close = prev * 1.04
             bars.append(DailyBar("sh600000", f"2024-01-{day:02d}",
                                  prev * 1.005, close, prev * 0.995, close,
                                  2000 + day * 100, prev_close=prev))
@@ -33,7 +33,7 @@ class StrategyBacktestTests(unittest.TestCase):
             bars, context_factory=lambda date: Context()
         )
         self.assertGreater(len(result.equity_curve), 0)
-        self.assertGreaterEqual(result.final_equity, 0)
+        self.assertGreaterEqual(result.final_equity, 0)\n        self.assertGreater(len(result.trades), 0)
 
 
 if __name__ == "__main__":
