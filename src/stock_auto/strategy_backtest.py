@@ -44,7 +44,7 @@ class ThreeDriveBacktest:
             model_position = TradePosition(
                 symbol=position.symbol, entry_price=position.entry_price,
                 quantity=position.quantity, entry_date=position.entry_date,
-                highest_price=max(position.highest_price or position.entry_price, highest),
+                highest_price=max(position.entry_price, highest),
                 cost_basis=position.entry_cost,
             )
             position.entry_price = model_position.entry_price
