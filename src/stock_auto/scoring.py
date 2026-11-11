@@ -31,10 +31,10 @@ def score_snapshot(snapshot: MarketSnapshot, config: StrategyConfig | None = Non
             trend += 5.0
             reasons.append("当日涨幅处于强势观察区间")
         if snapshot.recent_limit_up is True:
-            trend += 3.0
+            trend += 5.0
             reasons.append("近期出现涨停，股性活跃")
         elif snapshot.amplitude is not None and snapshot.amplitude >= cfg.min_amplitude:
-            trend += 2.0
+            trend += 3.0
             reasons.append("近期振幅达到活跃阈值")
         elif snapshot.recent_limit_up is None and snapshot.amplitude is None:
             missing.extend(["recent_limit_up", "amplitude"])
