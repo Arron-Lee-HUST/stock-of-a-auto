@@ -10,7 +10,9 @@
 - **资金博弈**：近 5 日均量放大、量价关系、主力资金净流向。
 - **市场情绪**：板块热度、涨停梯队、龙头状态、消息催化。
 - **动态决策**：竞价涨幅/量比过滤、分时 VWAP 确认、止盈止损与移动止盈。
-- **风险管理**：市场退潮识别、空仓/谨慎模式、单票仓位上限和分仓数量计算。\n- **历史数据与回测**：标准日线数据协议、CSV/Tushare 适配器、下一交易日开盘成交、T+1、涨跌停/停牌约束及费用/滑点模型。\n- **多源数据契约**：竞价、分时、资金流和板块情绪的统一 point-in-time 数据结构。
+- **风险管理**：市场退潮识别、空仓/谨慎模式、单票仓位上限和分仓数量计算。
+- **历史数据与回测**：标准日线数据协议、CSV/Tushare 适配器、下一交易日开盘成交、T+1、涨跌停/停牌约束及费用/滑点模型。
+- **多源数据契约**：竞价、分时、资金流和板块情绪的统一 point-in-time 数据结构。\n- **全市场候选扫描**：从日线构建技术特征，接入 point-in-time 上下文后按三驱评分排序。\n- **策略联动回测**：将候选扫描、持仓退出规则和日频成交模拟串联。
 
 策略参数集中在 `StrategyConfig`，行情输入统一使用 `MarketSnapshot`。所有百分比字段均使用百分数数值（例如 3.2 表示 3.2%）；未知字段使用 `None`，不允许用 0 冒充缺失值。
 
@@ -63,7 +65,13 @@ print(signal.eligible, signal.score, signal.reasons, signal.warnings)
 - `src/stock_auto/scoring.py`：三驱评分及候选硬过滤。
 - `src/stock_auto/decision.py`：竞价/盘中入场和退出判断。
 - `src/stock_auto/risk.py`：市场风险等级和仓位计算。
-- `src/stock_auto/pipeline.py`：收盘后候选筛选入口。\n- `src/stock_auto/data.py`：标准日线模型、行情数据协议和 CSV 适配器。\n- `src/stock_auto/providers.py`：Tushare Pro 可选适配器和代码转换。\n- `src/stock_auto/context.py`：竞价、分时、资金流、板块数据协议。\n- `docs/data-providers.md`：供应商接入与数据质量要求。\n- `src/stock_auto/backtest.py`：无未来函数的日频回测引擎。\n- `docs/data-backtest.md`：历史数据格式与回测假设。
+- `src/stock_auto/pipeline.py`：单标的收盘后候选筛选入口。\n- `src/stock_auto/scanner.py`：全市场候选扫描与特征构建。\n- `src/stock_auto/strategy_backtest.py`：三驱选股与回测引擎的联动入口。
+- `src/stock_auto/data.py`：标准日线模型、行情数据协议和 CSV 适配器。
+- `src/stock_auto/providers.py`：Tushare Pro 可选适配器和代码转换。
+- `src/stock_auto/context.py`：竞价、分时、资金流、板块数据协议。
+- `docs/data-providers.md`：供应商接入与数据质量要求。
+- `src/stock_auto/backtest.py`：无未来函数的日频回测引擎。
+- `docs/data-backtest.md`：历史数据格式与回测假设。
 - `tests/`：单元测试。
 - `docs/strategy.md`：策略细节、数据契约与边界说明。
 
