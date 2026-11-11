@@ -14,10 +14,10 @@ pip install -e .
 
 - `stock-auto validate-data --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31`
 - `stock-auto scan --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31 --trade-date 2024-12-31 --flow-csv data/flow.csv --sector-csv data/sector.csv`
-- `stock-auto backtest --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31 --flow-csv data/flow.csv --sector-csv data/sector.csv`
+- `stock-auto monitor --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31 --signal-date 2024-12-30 --trade-date 2024-12-31 --checked-at 09:23:00 --auction-csv data/auction.csv --intraday-csv data/intraday.csv --flow-csv data/flow.csv --sector-csv data/sector.csv --market-stats-json data/market-stats.json`\n- `stock-auto backtest --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31 --flow-csv data/flow.csv --sector-csv data/sector.csv`
 - `stock-auto paper-replay --daily-csv data/daily.csv --orders-csv data/paper-orders.csv`
 
-Universe CSV 至少需要 `symbol` 列。日线 CSV 格式见 `docs/data-backtest.md`；上下文 CSV 字段见 `docs/data-providers.md`。模拟盘订单 CSV 字段：`order_id,symbol,side,quantity,submitted_date,trade_date`。
+Monitor 命令使用上一交易日 `--signal-date` 生成候选信号，使用当日 `--trade-date` 读取竞价/分时数据；市场宽度 JSON 需包含 `market_limit_up_count`、`market_limit_down_count`、`market_max_streak`。持仓 CSV 可选，字段为 `symbol,entry_price,quantity,entry_date,highest_price,cost_basis`。\n\nUniverse CSV 至少需要 `symbol` 列。日线 CSV 格式见 `docs/data-backtest.md`；上下文 CSV 字段见 `docs/data-providers.md`。模拟盘订单 CSV 字段：`order_id,symbol,side,quantity,submitted_date,trade_date`。
 
 ## Docker
 
