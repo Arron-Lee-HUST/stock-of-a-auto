@@ -178,8 +178,9 @@ class BacktestEngine:
         )
 
 
-def _at_limit(bar: DailyBar, price: float, direction: int) -> bool:
-    if bar.prev_close is None:
+def _at_limit(bar: DailyBar, price: float, direction: int, fallback_prev_close: float | None = None) -> bool:
+    previous_close = bar.prev_close if bar.prev_close is not None else fallback_prev_close
+    if previous_close is None:
         return False
-    limit_price = bar.prev_close * (1 + direction * bar.limit_pct)
+    limit_price = previous_close * (1 + direction * bar.limit_pct)
     return price >= limit_price * 0.9995 if direction > 0 else price <= limit_price * 1.0005
