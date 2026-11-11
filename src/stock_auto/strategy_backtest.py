@@ -29,7 +29,7 @@ class ThreeDriveBacktest:
             return [item.snapshot.symbol for item in result.candidates]
 
         def select_exits(date, position: BacktestPosition, history):
-            rows = history.get(position.symbol, ())
+            rows = history
             if not rows:
                 return False
             last = rows[-1]
