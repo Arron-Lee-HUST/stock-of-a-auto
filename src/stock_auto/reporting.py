@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import csv
-import json
+import json\nimport math
 from dataclasses import asdict, is_dataclass
 from html import escape
 from pathlib import Path
@@ -9,6 +9,8 @@ from typing import Any
 
 
 def _plain(value: Any) -> Any:
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
     if is_dataclass(value):
         return asdict(value)
     if isinstance(value, dict):
