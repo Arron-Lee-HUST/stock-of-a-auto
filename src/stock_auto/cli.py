@@ -1,0 +1,144 @@
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+from pathlib import Path
+
+from .backtest import BacktestConfig
+from .context import CsvPointInTimeContextProvider
+from .data import CsvMarketDataProvider
+from .paper import PaperBroker
+from .reporting import write_backtest_reports, write_dashboard, write_json, write_scan_reports
+from .scanner import CandidateScanner
+from .strategy_backtest import ThreeDriveBacktest
+from .validation import validate_bars
+
+
+def _symbols(path: str) -> list[str]:
+    with Path(path).open("r", encoding="utf-8-sig", newline="") as stream:
+        rows = csv.DictReader(stream)
+        if not rows.fieldnames or "symbol" not in rows.fieldnames:
+            raise ValueError("universe CSV must contain a symbol column")
+        return sorted({row["symbol"].strip() for row in rows if row.get("symbol", "").strip()})
+
+
+def _context(args, date):
+    if not any((args.auction_csv, args.intraday_csv, args.flow_csv, args.sector_csv)):
+        return None
+    return CsvPointInTimeContextProvider(args.auction_csv, args.intraday_csv,
+                                         args.flow_csv, args.sector_csv)
+
+
+def _add_context_args(parser):
+    parser.add_argument("--auction-csv")
+    parser.add_argument("--intraday-csv")
+    parser.add_argument("--flow-csv")
+    parser.add_argument("--sector-csv")
+
+
+def _add_market_args(parser):
+    parser.add_argument("--daily-csv", required=True)
+    parser.add_argument("--universe-csv", required=True)
+    parser.add_argument("--start-date", required=True)
+    parser.add_argument("--end-date", required=True)
+    parser.add_argument("--output-dir", default="reports")
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(prog="stock-auto", description="A-share three-drive research and paper trading toolkit")
+    commands = parser.add_subparsers(dest="command", required=True)
+
+    scan = commands.add_parser("scan", help="scan the universe and export candidates")
+    _add_market_args(scan)
+    _add_context_args(scan)
+    scan.add_argument("--trade-date", required=True)
+
+    backtest = commands.add_parser("backtest", help="run the three-drive historical backtest")
+    _add_market_args(backtest)
+    _add_context_args(backtest)
+
+    validate = commands.add_parser("validate-data", help="validate normalized daily bars")
+    validate.add_argument("--daily-csv", required=True)
+    validate.add_argument("--universe-csv", required=True)
+    validate.add_argument("--start-date", required=True)
+    validate.add_argument("--end-date", required=True)
+    validate.add_argument("--output", default="reports/data-quality.json")
+
+    paper = commands.add_parser("paper-replay", help="replay pre-approved paper orders against daily bars")
+    paper.add_argument("--daily-csv", required=True)
+    paper.add_argument("--orders-csv", required=True)
+    paper.add_argument("--initial-cash", type=float, default=1_000_000)
+    paper.add_argument("--output", default="reports/paper-account.json")
+
+    args = parser.parse_args(argv)
+    if args.command == "validate-data":
+        bars = CsvMarketDataProvider(args.daily_csv).get_bars(
+            _symbols(args.universe_csv), args.start_date, args.end_date)
+        report = validate_bars(bars)
+        write_json(args.output, report)
+        print(json.dumps({"valid": report.valid, "rows": report.row_count,
+                          "symbols": report.symbol_count, "output": args.output}, ensure_ascii=False))
+        return 0 if report.valid else 2
+
+    if args.command == "paper-replay":
+        with Path(args.orders_csv).open("r", encoding="utf-8-sig", newline="") as stream:
+            orders = list(csv.DictReader(stream))
+        symbols = sorted({row["symbol"] for row in orders})
+        bars = CsvMarketDataProvider(args.daily_csv).get_bars(
+            symbols, min(row["submitted_date"] for row in orders),
+            max(row["trade_date"] for row in orders))
+        broker = PaperBroker(args.initial_cash)
+        for row in orders:
+            broker.submit_order(row["order_id"], row["symbol"], row["side"],
+                                int(row["quantity"]), row["submitted_date"])
+        for bar in bars:
+            broker.process_bar(bar)
+        payload = {
+            "cash": broker.account.cash,
+            "positions": {s: vars(p) if hasattr(p, "__dict__") else {
+                "symbol": p.symbol, "quantity": p.quantity, "entry_date": p.entry_date,
+                "average_price": p.average_price, "cost_basis": p.cost_basis
+            } for s, p in broker.account.positions.items()},
+            "orders": [{"order_id": o.order_id, "symbol": o.symbol, "side": o.side,
+                        "quantity": o.quantity, "status": o.status, "reason": o.reason}
+                       for o in broker.account.orders.values()],
+            "fills": [{"order_id": f.order_id, "symbol": f.symbol, "side": f.side,
+                       "trade_date": f.trade_date, "quantity": f.quantity,
+                       "price": f.price, "fee": f.fee} for f in broker.account.fills],
+        }
+        write_json(args.output, payload)
+        print(f"paper replay complete: {args.output}")
+        return 0
+
+    symbols = _symbols(args.universe_csv)
+    bars = CsvMarketDataProvider(args.daily_csv).get_bars(symbols, args.start_date, args.end_date)
+    if args.command == "scan":
+        provider = _context(args, args.trade_date)
+        result = CandidateScanner().scan(bars, args.trade_date, provider)
+        write_scan_reports(result, args.output_dir)
+        rows = [{"symbol": x.signal.symbol, "score": x.signal.score,
+                 "trend": x.signal.trend_score, "capital": x.signal.capital_score,
+                 "sentiment": x.signal.sentiment_score} for x in result.candidates]
+        write_dashboard(Path(args.output_dir) / "index.html", "三驱候选扫描",
+                        {"交易日": args.trade_date, "合格候选": len(result.candidates),
+                         "未通过": len(result.rejected)}, rows)
+        print(f"scan complete: {len(result.candidates)} eligible, {len(result.rejected)} rejected")
+        return 0
+    factory = lambda date: _context(args, date)
+    result = ThreeDriveBacktest(backtest_config=BacktestConfig()).run(bars, factory)
+    write_backtest_reports(result, args.output_dir)
+    write_dashboard(Path(args.output_dir) / "index.html", "三驱策略回测",
+                    {"初始资金": result.initial_cash, "期末权益": round(result.final_equity, 2),
+                     "收益率": f"{result.total_return_pct:.2f}%",
+                     "最大回撤": f"{result.max_drawdown_pct:.2f}%",
+                     "胜率": f"{result.win_rate_pct:.2f}%", "交易次数": len(result.trades)},
+                    [{"symbol": t.symbol, "entry": t.entry_date, "exit": t.exit_date,
+                      "pnl": round(t.pnl, 2), "return": f"{t.return_pct:.2f}%"} for t in result.trades],
+                    result.equity_curve)
+    print(f"backtest complete: return={result.total_return_pct:.2f}% trades={len(result.trades)}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
