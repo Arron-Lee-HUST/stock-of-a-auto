@@ -14,7 +14,9 @@
 - **历史数据与回测**：标准日线数据协议、CSV/Tushare 适配器、下一交易日开盘成交、T+1、涨跌停/停牌约束及费用/滑点模型。
 - **多源数据契约**：竞价、分时、资金流和板块情绪的统一 point-in-time 数据结构。
 - **全市场候选扫描**：从日线构建技术特征，接入 point-in-time 上下文后按三驱评分排序。
-- **策略联动回测**：将候选扫描、持仓退出规则和日频成交模拟串联。\n- **交易监控**：竞价窗口 watch 信号、盘中入场与持仓退出监控。\n- **组合风控**：日内亏损、账户回撤、连续亏损、总敞口和板块集中度熔断。
+- **策略联动回测**：将候选扫描、持仓退出规则和日频成交模拟串联。
+- **交易监控**：竞价窗口 watch 信号、盘中入场与持仓退出监控。
+- **组合风控**：日内亏损、账户回撤、连续亏损、总敞口和板块集中度熔断。
 
 策略参数集中在 `StrategyConfig`，行情输入统一使用 `MarketSnapshot`。所有百分比字段均使用百分数数值（例如 3.2 表示 3.2%）；未知字段使用 `None`，不允许用 0 冒充缺失值。
 
@@ -69,7 +71,10 @@ print(signal.eligible, signal.score, signal.reasons, signal.warnings)
 - `src/stock_auto/risk.py`：市场风险等级和仓位计算。
 - `src/stock_auto/pipeline.py`：单标的收盘后候选筛选入口。
 - `src/stock_auto/scanner.py`：全市场候选扫描与特征构建。
-- `src/stock_auto/strategy_backtest.py`：三驱选股与回测引擎的联动入口。\n- `src/stock_auto/monitor.py`：竞价和盘中信号监控。\n- `src/stock_auto/portfolio_risk.py`：组合级风控与熔断。\n- `docs/monitoring.md`、`docs/risk-controls.md`：监控和风控说明。
+- `src/stock_auto/strategy_backtest.py`：三驱选股与回测引擎的联动入口。
+- `src/stock_auto/monitor.py`：竞价和盘中信号监控。
+- `src/stock_auto/portfolio_risk.py`：组合级风控与熔断。
+- `docs/monitoring.md`、`docs/risk-controls.md`：监控和风控说明。
 - `src/stock_auto/data.py`：标准日线模型、行情数据协议和 CSV 适配器。
 - `src/stock_auto/providers.py`：Tushare Pro 可选适配器和代码转换。
 - `src/stock_auto/context.py`：竞价、分时、资金流、板块数据协议。
