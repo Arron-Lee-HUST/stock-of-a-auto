@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import csv
-import json\nimport math
+import json
+import math
 from dataclasses import asdict, is_dataclass
 from html import escape
 from pathlib import Path
