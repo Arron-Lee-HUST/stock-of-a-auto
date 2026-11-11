@@ -11,17 +11,14 @@ class StrategyConfig:
     require_above_ma20: bool = True
     min_volume_ratio: float = 1.5
     min_amplitude: float = 3.0
-    require_recent_activity: bool = False
 
     # Capital drive
     prefer_positive_main_flow: bool = True
     strong_main_flow_ratio: float = 0.0
-    breakout_lookback_high: bool = True
 
     # Sentiment drive
     hot_sector_top_n: int = 10
     min_sector_limit_ups: int = 1
-    require_sector_leader: bool = False
 
     # Score thresholds
     min_total_score: float = 60.0
