@@ -34,7 +34,7 @@ source .venv/bin/activate
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
-## 最小调用示例
+## 命令行\n\n安装后可使用 `stock-auto`，支持 `validate-data`、`scan`、`monitor`、`backtest` 和 `paper-replay`。示例数据生成和命令参数见 [deploy/README.md](deploy/README.md)。\n\n## 最小调用示例
 
 ```python
 from stock_auto import MarketSnapshot, StrategyConfig, evaluate_candidate
