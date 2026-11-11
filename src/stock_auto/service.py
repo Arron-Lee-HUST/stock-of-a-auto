@@ -121,7 +121,14 @@ class MonitorService:
                     "market_risk": report.market_risk,
                     "event": asdict(event),
                 }
-                fingerprint = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
+                # Ignore the polling timestamp so an unchanged signal is not re-alerted
+                # every few seconds. A changed action/reason remains a distinct event.
+                fingerprint_payload = {
+                    "trade_date": payload["trade_date"],
+                    "market_risk": payload["market_risk"],
+                    "event": payload["event"],
+                }
+                fingerprint = json.dumps(fingerprint_payload, sort_keys=True, ensure_ascii=False, default=str)
                 if fingerprint not in self._seen:
                     self.alert_sink.publish(payload)
                     self._seen.add(fingerprint)
