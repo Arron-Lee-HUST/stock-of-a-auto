@@ -9,6 +9,9 @@ from .backtest import BacktestConfig
 from .context import CsvPointInTimeContextProvider
 from .data import CsvMarketDataProvider
 from .paper import PaperBroker
+from .monitor import MarketMonitor
+from .models import MarketSnapshot, TradePosition
+from .scanner import build_snapshot
 from .reporting import write_backtest_reports, write_dashboard, write_json, write_scan_reports
 from .scanner import CandidateScanner
 from .strategy_backtest import ThreeDriveBacktest
@@ -65,6 +68,16 @@ def main(argv=None) -> int:
     validate.add_argument("--end-date", required=True)
     validate.add_argument("--output", default="reports/data-quality.json")
 
+    monitor = commands.add_parser("monitor", help="evaluate auction or intraday signals from CSV snapshots")
+    _add_market_args(monitor)
+    _add_context_args(monitor)
+    monitor.add_argument("--signal-date", required=True)
+    monitor.add_argument("--trade-date", required=True)
+    monitor.add_argument("--checked-at", required=True)
+    monitor.add_argument("--market-stats-json", required=True)
+    monitor.add_argument("--positions-csv")
+    monitor.add_argument("--output", default="reports/monitor.json")
+
     paper = commands.add_parser("paper-replay", help="replay pre-approved paper orders against daily bars")
     paper.add_argument("--daily-csv", required=True)
     paper.add_argument("--orders-csv", required=True)
@@ -80,6 +93,40 @@ def main(argv=None) -> int:
         print(json.dumps({"valid": report.valid, "rows": report.row_count,
                           "symbols": report.symbol_count, "output": args.output}, ensure_ascii=False))
         return 0 if report.valid else 2
+
+    if args.command == "monitor":
+        symbols = _symbols(args.universe_csv)
+        bars = CsvMarketDataProvider(args.daily_csv).get_bars(symbols, args.start_date, args.signal_date)
+        signal_context = _context(args, args.signal_date)
+        scan_result = CandidateScanner().scan(bars, args.signal_date, signal_context)
+        signal_map = {item.signal.symbol: item.signal for item in scan_result.candidates}
+        grouped = {}
+        for bar in bars:
+            grouped.setdefault(bar.symbol, []).append(bar)
+        live_context = _context(args, args.trade_date)
+        auction = {x.symbol: x for x in live_context.get_auction_quotes(symbols, args.trade_date)} if live_context else {}
+        intraday = {x.symbol: x for x in live_context.get_intraday_quotes(symbols, args.trade_date)} if live_context else {}
+        snapshots = {}
+        for symbol in signal_map:
+            snap = build_snapshot(grouped[symbol], auction.get(symbol), intraday.get(symbol))
+            snap.trade_date = args.trade_date
+            snapshots[symbol] = snap
+        positions = {}
+        if args.positions_csv:
+            with Path(args.positions_csv).open("r", encoding="utf-8-sig", newline="") as stream:
+                for row in csv.DictReader(stream):
+                    positions[row["symbol"]] = TradePosition(
+                        row["symbol"], float(row["entry_price"]), int(row["quantity"]),
+                        row.get("entry_date", ""),
+                        float(row["highest_price"]) if row.get("highest_price") else None,
+                        float(row["cost_basis"]) if row.get("cost_basis") else None)
+        market_stats = json.loads(Path(args.market_stats_json).read_text(encoding="utf-8"))
+        market_snapshot = MarketSnapshot(symbol="market", trade_date=args.trade_date, **market_stats)
+        report = MarketMonitor().evaluate(args.trade_date, args.checked_at, snapshots,
+                                          signal_map, positions, market_snapshot)
+        write_json(args.output, report)
+        print(f"monitor complete: {len(report.events)} events, market_risk={report.market_risk}")
+        return 0
 
     if args.command == "paper-replay":
         with Path(args.orders_csv).open("r", encoding="utf-8-sig", newline="") as stream:
