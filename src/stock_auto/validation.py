@@ -18,7 +18,7 @@ class DataQualityReport:
 
     @property
     def valid(self) -> bool:
-        return not (self.duplicate_keys or self.unsorted_keys or self.suspicious_bars)
+        return self.row_count > 0 and not (self.duplicate_keys or self.unsorted_keys or self.suspicious_bars)
 
 
 def validate_bars(bars: Sequence[DailyBar]) -> DataQualityReport:
