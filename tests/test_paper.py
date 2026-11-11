@@ -27,6 +27,12 @@ class PaperBrokerTests(unittest.TestCase):
         self.assertEqual(fills[0].side, "SELL")
         self.assertNotIn("sh600000", self.broker.account.positions)
 
+    def test_missing_previous_close_blocks_fill(self):
+        order = self.broker.submit_order("b-missing", "sh600000", "BUY", 100, "2024-01-02")
+        self.broker.process_bar(DailyBar("sh600000", "2024-01-03", 10, 10.5, 9.9, 10.2, 10000))
+        self.assertEqual(order.status, "rejected")
+        self.assertIn("missing_prev_close", order.reason)
+
     def test_duplicate_order_id_is_idempotent(self):
         first = self.broker.submit_order("same", "sh600000", "BUY", 100, "2024-01-02")
         second = self.broker.submit_order("same", "sh600000", "BUY", 200, "2024-01-02")
