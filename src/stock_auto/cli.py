@@ -95,7 +95,17 @@ def main(argv=None) -> int:
         return 0 if report.valid else 2
 
     if args.command == "monitor":
-        symbols = _symbols(args.universe_csv)
+        universe = _symbols(args.universe_csv)
+        positions = {}
+        if args.positions_csv:
+            with Path(args.positions_csv).open("r", encoding="utf-8-sig", newline="") as stream:
+                for row in csv.DictReader(stream):
+                    positions[row["symbol"]] = TradePosition(
+                        row["symbol"], float(row["entry_price"]), int(row["quantity"]),
+                        row.get("entry_date", ""),
+                        float(row["highest_price"]) if row.get("highest_price") else None,
+                        float(row["cost_basis"]) if row.get("cost_basis") else None)
+        symbols = sorted(set(universe) | set(positions))
         bars = CsvMarketDataProvider(args.daily_csv).get_bars(symbols, args.start_date, args.signal_date)
         signal_context = _context(args, args.signal_date)
         scan_result = CandidateScanner().scan(bars, args.signal_date, signal_context)
@@ -107,19 +117,12 @@ def main(argv=None) -> int:
         auction = {x.symbol: x for x in live_context.get_auction_quotes(symbols, args.trade_date)} if live_context else {}
         intraday = {x.symbol: x for x in live_context.get_intraday_quotes(symbols, args.trade_date)} if live_context else {}
         snapshots = {}
-        for symbol in signal_map:
+        for symbol in sorted(set(signal_map) | set(positions)):
+            if symbol not in grouped:
+                continue
             snap = build_snapshot(grouped[symbol], auction.get(symbol), intraday.get(symbol))
             snap.trade_date = args.trade_date
             snapshots[symbol] = snap
-        positions = {}
-        if args.positions_csv:
-            with Path(args.positions_csv).open("r", encoding="utf-8-sig", newline="") as stream:
-                for row in csv.DictReader(stream):
-                    positions[row["symbol"]] = TradePosition(
-                        row["symbol"], float(row["entry_price"]), int(row["quantity"]),
-                        row.get("entry_date", ""),
-                        float(row["highest_price"]) if row.get("highest_price") else None,
-                        float(row["cost_basis"]) if row.get("cost_basis") else None)
         market_stats = json.loads(Path(args.market_stats_json).read_text(encoding="utf-8"))
         market_snapshot = MarketSnapshot(symbol="market", trade_date=args.trade_date, **market_stats)
         report = MarketMonitor().evaluate(args.trade_date, args.checked_at, snapshots,
