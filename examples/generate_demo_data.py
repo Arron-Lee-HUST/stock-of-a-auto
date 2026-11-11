@@ -33,7 +33,7 @@ def main():
         for day_index, day in enumerate(dates):
             previous = close
             close = previous * 1.04
-            volume = int(10000 * (1.10 ** day_index))
+            volume = int(10000 * (1.20 ** day_index))
             daily.append([symbol, day, round(previous * 1.01, 4), round(close * 1.045, 4),
                           round(previous * 0.995, 4), round(close, 4), volume,
                           round(volume * close, 2), round(previous, 4), 0, 0.10])
