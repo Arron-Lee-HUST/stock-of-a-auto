@@ -53,6 +53,8 @@ def main():
     (root / "market-stats.json").write_text(json.dumps({
         "market_limit_up_count": 45, "market_limit_down_count": 3, "market_max_streak": 5
     }, ensure_ascii=False, indent=2), encoding="utf-8")
+    write_csv(root / "positions.csv", ["symbol", "entry_price", "quantity", "entry_date", "highest_price", "cost_basis"],
+              [[symbols[0], 10.0, 100, dates[-3], "", ""]])
     write_csv(root / "paper-orders.csv", ["order_id", "symbol", "side", "quantity", "submitted_date", "trade_date"],
               [["demo-buy-001", symbols[0], "BUY", 100, dates[-2], dates[-1]]])
     print(f"Synthetic demo data written to {root}; not real market data.")
