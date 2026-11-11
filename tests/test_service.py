@@ -52,13 +52,17 @@ class ServiceTests(unittest.TestCase):
     def test_identical_events_are_deduplicated(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            report = MonitorReport("2026-11-11", "09:23:00", "normal",
-                                   [MonitorEvent("sh600000", "auction", "watch")])
+            reports = iter([
+                MonitorReport("2026-11-11", "09:23:00", "normal",
+                              [MonitorEvent("sh600000", "auction", "watch")]),
+                MonitorReport("2026-11-11", "09:23:05", "normal",
+                              [MonitorEvent("sh600000", "auction", "watch")]),
+            ])
             service = MonitorService(TradingCalendar({date(2026, 11, 11)}),
-                lambda d, t: report, JsonlAlertSink(root / "alerts.jsonl"), root / "health.json")
+                lambda d, t: next(reports), JsonlAlertSink(root / "alerts.jsonl"), root / "health.json")
             moment = datetime(2026, 11, 11, 9, 23, tzinfo=ZoneInfo("Asia/Shanghai"))
             service.run_once(moment)
-            service.run_once(moment)
+            service.run_once(moment.replace(second=5))
             self.assertEqual(len((root / "alerts.jsonl").read_text().splitlines()), 1)
 
     def test_weekend_or_holiday_does_not_call_monitor(self):
