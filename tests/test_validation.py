@@ -5,6 +5,9 @@ from stock_auto.validation import validate_bars
 
 
 class ValidationTests(unittest.TestCase):
+    def test_empty_data_set_is_invalid(self):
+        self.assertFalse(validate_bars([]).valid)
+
     def test_duplicate_and_unsorted_keys_are_reported(self):
         a = DailyBar("sh600000", "2024-01-03", 10, 11, 9, 10, 1000)
         b = DailyBar("sh600000", "2024-01-02", 10, 11, 9, 10, 1000)
