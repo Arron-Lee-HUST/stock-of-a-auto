@@ -34,3 +34,22 @@ Tushare 的日线成交量单位为手、成交额单位为千元；适配器统
 - 复权序列仅用于指标计算；成交模拟使用真实未复权价格。
 - 历史资金流、板块排名、事件催化必须保存当时可见版本，禁止使用事后修订数据回填历史。
 - 生产运行需记录供应商、抓取时间、数据版本和缺失率。
+
+## CSV 上下文字段
+
+`CsvPointInTimeContextProvider` 可分别读取以下文件，所有文件均以 `symbol,trade_date` 为键：
+
+- 竞价：`auction_pct,auction_volume_ratio`
+- 分时：`price,vwap,volume_ratio`
+- 资金流：`main_net_inflow`
+- 板块：`sector_rank,sector_limit_up_count,sector_leader_limit_up,catalyst`
+
+日期格式必须是 `YYYY-MM-DD`，布尔值支持 `true/false`、`1/0`、`yes/no`。数据源必须明确金额单位、成交量单位和时间戳语义。
+
+生成合成演示数据（仅用于功能验证）：
+
+```bash
+python examples/generate_demo_data.py
+```
+
+演示数据并非真实行情，不可用于策略有效性评估。
