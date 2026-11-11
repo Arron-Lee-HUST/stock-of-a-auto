@@ -15,4 +15,4 @@ jobs:
         with:
           python-version: "3.11"
       - name: Run unit tests
-        run: PYTHONPATH=src python -m unittest discover -s tests -v
+        run: |\n          PYTHONPATH=src python -m unittest discover -s tests -v\n          PYTHONPATH=src python -m compileall -q src tests\n          PYTHONPATH=src python -m stock_auto --help
