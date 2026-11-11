@@ -17,7 +17,10 @@ jobs:
       - name: Run unit tests
         run: |
           PYTHONPATH=src python -m unittest discover -s tests -v
-          PYTHONPATH=src python -m compileall -q src tests\n          python -m pip install --no-deps .\n          stock-auto --help\n          docker build -t stock-of-a-auto:ci .
+          PYTHONPATH=src python -m compileall -q src tests
+          python -m pip install --no-deps .
+          stock-auto --help
+          docker build -t stock-of-a-auto:ci .
           PYTHONPATH=src python -m stock_auto --help
           python examples/generate_demo_data.py
           PYTHONPATH=src python -m stock_auto validate-data --daily-csv examples/data/daily.csv --universe-csv examples/data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31 --output /tmp/data-quality.json
