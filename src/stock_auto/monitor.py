@@ -46,7 +46,7 @@ class MarketMonitor:
         risk = assess_market_risk(market_snapshot, self.config)
         report = MonitorReport(trade_date, checked_at, risk.level)
         auction_phase = time(9, 20) <= now <= time(9, 25)
-        intraday_phase = now >= time(9, 30) and now <= time(15, 0)
+        intraday_phase = (time(9, 30) <= now <= time(11, 30)) or (time(13, 0) <= now <= time(15, 0))
 
         if not (auction_phase or intraday_phase):
             report.events.append(MonitorEvent("*", "outside_session", "no_action",
@@ -59,9 +59,15 @@ class MarketMonitor:
                                                    ["行情交易日期与监控日期不一致"]))
                 continue
             if symbol in positions:
+                if positions[symbol].entry_date and positions[symbol].entry_date >= trade_date:
+                    report.events.append(MonitorEvent(symbol, "position", "hold", ["T+1 约束：当日买入的持仓不可当日卖出"]))
+                    continue
                 decision = evaluate_exit(snapshot, positions[symbol], self.config)
                 if decision.action in {"sell", "reduce"}:
                     report.events.append(_event(symbol, "position", decision))
+                continue
+            if risk.level == "risk_off":
+                report.events.append(MonitorEvent(symbol, "risk_gate", "no_new_entries", ["市场 risk_off，暂停新增仓位"]))
                 continue
             signal = signals.get(symbol)
             if signal is None or not signal.eligible:
@@ -81,6 +87,9 @@ class MarketMonitor:
                                                        ["竞价条件通过，等待开盘后量价确认"]))
             elif intraday_phase:
                 decision = evaluate_entry(snapshot, signal, self.config)
+                if risk.level == "cautious" and decision.action == "buy":
+                    decision.action = "wait"
+                    decision.warnings.append("市场谨慎模式：仅观察，不输出买入动作")
                 if decision.action != "wait" or decision.warnings:
                     report.events.append(_event(symbol, "intraday", decision))
         return report
