@@ -6,7 +6,7 @@ from typing import Iterable, Mapping, Sequence
 from .config import StrategyConfig
 from .context import AuctionQuote, CapitalFlow, IntradayQuote, PointInTimeContextProvider, SectorContext
 from .data import DailyBar
-from .models import MarketSnapshot, RiskAssessment, Signal
+from .models import MarketSnapshot, Signal
 from .scoring import score_snapshot
 
 
@@ -38,7 +38,6 @@ class CandidateScanner:
         bars: Sequence[DailyBar],
         trade_date: str,
         context_provider: PointInTimeContextProvider | None = None,
-        market_context: RiskAssessment | None = None,
     ) -> ScanResult:
         by_symbol: dict[str, list[DailyBar]] = {}
         for bar in bars:
@@ -62,9 +61,6 @@ class CandidateScanner:
                 continue
             snapshot = build_snapshot(history, auction.get(symbol), intraday.get(symbol),
                                       flows.get(symbol), sectors.get(symbol))
-            if market_context is not None:
-                # Risk level is carried by the caller; scoring remains independent of portfolio state.
-                snapshot.market_limit_up_count = None
             signal = score_snapshot(snapshot, self.config)
             item = Candidate(snapshot, signal)
             (result.candidates if signal.eligible else result.rejected).append(item)
