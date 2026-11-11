@@ -49,7 +49,6 @@ class ThreeDriveBacktest:
             )
             position.entry_price = model_position.entry_price
             position.quantity = model_position.quantity
-            position.highest_price = model_position.highest_price
             return evaluate_exit(snapshot, model_position, self.scanner.config).action in {"sell", "reduce"}
 
         return self.engine.run(bars, select_entries, select_exits)
