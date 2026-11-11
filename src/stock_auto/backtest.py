@@ -103,8 +103,6 @@ class BacktestEngine:
             # Decisions at close; execute exits at next session open. T+1 is enforced
             # because a position opened at next_date cannot be exited until a later date.
             for symbol, position in list(positions.items()):
-                if position.entry_date == date:
-                    continue
                 rows = visible.get(symbol, ())
                 if rows and exit_selector(date, position, rows):
                     bar = tomorrow.get(symbol)
