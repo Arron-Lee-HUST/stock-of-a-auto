@@ -78,6 +78,9 @@ class PaperBroker:
                 continue
             cfg = self.config
             previous_close = bar.prev_close
+            if previous_close is None:
+                order.status, order.reason = "rejected", "missing_prev_close; cannot verify A-share price limits"
+                continue
             if previous_close is not None:
                 limit_up = previous_close * (1 + bar.limit_pct)
                 limit_down = previous_close * (1 - bar.limit_pct)
