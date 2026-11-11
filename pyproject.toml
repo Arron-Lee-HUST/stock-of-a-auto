@@ -7,7 +7,7 @@ name = "stock-of-a-auto"
 version = "0.1.0"
 description = "Configurable A-share short-term strategy engine based on the Three Drives, One Move model"
 requires-python = ">=3.11"
-dependencies = []\n\n[project.optional-dependencies]\ntushare = ["tushare>=1.4"]
+dependencies = []\n\n[project.scripts]\nstock-auto = "stock_auto.cli:main"\n\n[project.optional-dependencies]\ntushare = ["tushare>=1.4"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
