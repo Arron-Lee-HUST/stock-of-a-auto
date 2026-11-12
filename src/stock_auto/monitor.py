@@ -76,18 +76,23 @@ class MarketMonitor:
             if signal is None or not signal.eligible:
                 continue
             if auction_phase:
-                if snapshot.auction_pct is None or snapshot.auction_volume_ratio is None:
+                indicative_pct = snapshot.auction_indicative_pct
+                observed_pct = snapshot.auction_pct if snapshot.auction_pct is not None else indicative_pct
+                if observed_pct is None:
                     report.events.append(MonitorEvent(symbol, "auction", "wait",
-                                                       ["竞价涨幅或竞价量比缺失"]))
-                elif not self.config.auction_min_pct <= snapshot.auction_pct <= self.config.auction_max_pct:
+                                                       ["尚未取得有效竞价参考价格"]))
+                elif not self.config.auction_min_pct <= observed_pct <= self.config.auction_max_pct:
                     report.events.append(MonitorEvent(symbol, "auction", "reject",
-                                                       ["竞价涨幅超出策略允许区间"]))
+                                                       [f"当前竞价参考涨幅{observed_pct:.2f}%超出策略允许区间"]))
+                elif snapshot.auction_volume_ratio is None:
+                    report.events.append(MonitorEvent(symbol, "auction", "wait",
+                                                       [f"竞价参考涨幅{observed_pct:.2f}%，等待09:26最终匹配量及竞昨量比"]))
                 elif snapshot.auction_volume_ratio < self.config.min_auction_volume_ratio:
                     report.events.append(MonitorEvent(symbol, "auction", "wait",
-                                                       ["竞价量比不足"]))
+                                                       ["最终竞价成交量比不足"]))
                 else:
                     report.events.append(MonitorEvent(symbol, "auction", "watch",
-                                                       ["竞价条件通过，等待开盘后量价确认"]))
+                                                       ["最终竞价条件通过，等待开盘后量价确认"]))
             elif intraday_phase:
                 decision = evaluate_entry(snapshot, signal, self.config)
                 if risk.level == "cautious" and decision.action == "buy":
