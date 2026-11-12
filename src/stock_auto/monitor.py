@@ -45,7 +45,7 @@ class MarketMonitor:
         now = time.fromisoformat(checked_at)
         risk = assess_market_risk(market_snapshot, self.config)
         report = MonitorReport(trade_date, checked_at, risk.level)
-        auction_phase = time(9, 20) <= now <= time(9, 25)
+        auction_phase = time(9, 20) <= now <= time(9, 27)
         intraday_phase = (time(9, 30) <= now <= time(11, 30)) or (time(13, 0) <= now <= time(15, 0))
 
         if not (auction_phase or intraday_phase):
