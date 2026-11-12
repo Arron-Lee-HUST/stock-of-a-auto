@@ -95,3 +95,6 @@ stock-auto refresh-akshare --universe-csv data/universe.csv --daily-csv data/dai
 ```
 
 该命令读取每只股票本地最后交易日期，取全股票池最早的最后日期向前回看指定自然日数，下载后按 `(symbol, trade_date)` upsert，覆盖最近窗口内的修订数据并保留更早历史。当前不会自动更新交易日历；交易日历仍由部署方提供权威 CSV。
+
+
+可选自动化：仓库提供 `deploy/stock-auto-refresh.service.example` 与 `deploy/stock-auto-refresh.timer.example`，在工作日 15:10（Asia/Shanghai）触发日线增量刷新，并带 Persistent 与随机延迟。安装前修改路径、用户、股票池和输出 CSV；它不负责更新交易日历，也不会在休市日凭空生成行情。
