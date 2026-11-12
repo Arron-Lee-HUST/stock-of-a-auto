@@ -345,7 +345,7 @@ def main(argv=None) -> int:
             archive_path.parent.mkdir(parents=True, exist_ok=True)
             with archive_path.open("a", encoding="utf-8") as archive:
                 for snapshot in snapshots.values():
-                    archive.write(json.dumps({"checked_at": checked_at, **asdict(snapshot)}, ensure_ascii=False) + "\\n")
+                    archive.write(json.dumps({"checked_at": checked_at, **asdict(snapshot)}, ensure_ascii=False) + "\n")
 
 
             diagnostics = {
@@ -371,7 +371,7 @@ def main(argv=None) -> int:
                 archive.write(json.dumps(diagnostics, ensure_ascii=False) + "\n")
             if market_stats:
                 with archive_path.open("a", encoding="utf-8") as archive:
-                    archive.write(json.dumps({"checked_at": checked_at, "type": "market_stats", **market_stats}, ensure_ascii=False) + "\\n")
+                    archive.write(json.dumps({"checked_at": checked_at, "type": "market_stats", **market_stats}, ensure_ascii=False) + "\n")
             market = MarketSnapshot(
                 symbol="market", trade_date=trade_date,
                 market_limit_up_count=market_stats.get("market_limit_up_count") if market_stats else None,
