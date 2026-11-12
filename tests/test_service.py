@@ -7,7 +7,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from stock_auto.monitor import MonitorEvent, MonitorReport
-from stock_auto.service import JsonlAlertSink, MonitorService, TradingCalendar
+from stock_auto.service import JsonlAlertSink, SqliteAlertSink, MonitorService, TradingCalendar
 
 
 class ServiceTests(unittest.TestCase):
@@ -64,6 +64,25 @@ class ServiceTests(unittest.TestCase):
             service.run_once(moment)
             service.run_once(moment.replace(second=5))
             self.assertEqual(len((root / "alerts.jsonl").read_text().splitlines()), 1)
+
+
+    def test_sqlite_alert_sink_deduplicates_across_instances(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "alerts.sqlite3"
+            payload = {
+                "trade_date": "2026-11-11",
+                "checked_at": "09:23:00",
+                "market_risk": "cautious",
+                "event": {"symbol": "sh600000", "phase": "intraday", "action": "wait",
+                          "reasons": ["missing auction"], "warnings": ["fail closed"]},
+            }
+            SqliteAlertSink(path).publish(payload)
+            payload["checked_at"] = "09:23:30"
+            SqliteAlertSink(path).publish(payload)
+            import sqlite3
+            with sqlite3.connect(path) as db:
+                count = db.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
+            self.assertEqual(count, 1)
 
     def test_weekend_or_holiday_does_not_call_monitor(self):
         with tempfile.TemporaryDirectory() as tmp:
