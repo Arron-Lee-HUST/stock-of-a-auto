@@ -93,7 +93,8 @@ class EastmoneyTencentRealtimeProvider:
         if elapsed < self.min_interval_seconds:
             self.sleeper(self.min_interval_seconds - elapsed)
         self._last_request = time.monotonic()
-        return self.transport(base + "?" + urlencode(params), headers or HEADERS, self.timeout_seconds)
+        url = base + ("?" + urlencode(params) if params else "")
+        return self.transport(url, headers or HEADERS, self.timeout_seconds)
 
     def get_quotes(self, symbols: Iterable[str]) -> list[dict[str, Any]]:
         normalized = sorted({normalize_symbol(s) for s in symbols})
@@ -255,7 +256,7 @@ class EastmoneyTencentRealtimeProvider:
 
     def _get_sina_quote(self, symbol: str) -> dict[str, Any] | None:
         try:
-            payload = self._get("https://hq.sinajs.cn", {"list": symbol},
+            payload = self._get("https://hq.sinajs.cn/list=" + symbol, {},
                 {"Referer": "https://finance.sina.com.cn/", "User-Agent": HEADERS["User-Agent"]})
             if isinstance(payload, dict):
                 return None
