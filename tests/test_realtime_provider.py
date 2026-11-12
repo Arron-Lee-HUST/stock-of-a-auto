@@ -54,11 +54,14 @@ class RealtimeProviderTests(unittest.TestCase):
     def test_market_stats_uses_limit_pools_and_streak(self):
         def transport(url, headers, timeout):
             if "getTopicZTPool" in url:
-                return {"data": {"pool": [{"lbc": 2}, {"lbc": "4"}, {"lbc": 1}]}}
+                return {"data": {"pool": [{"lbc": 2, "c": "600000", "hybk": "银行"}, {"lbc": "4", "c": "000002", "hybk": "地产"}, {"lbc": 1, "c": "000003", "hybk": "银行"}]}}
             if "getTopicDTPool" in url:
                 return {"data": {"pool": [{"c": "000001"}]}}
             if "getTopicZDFenBu" in url:
                 return {"data": {"fenbu": [{"1": 200}, {"-1": 100}, {"0": 5}]}}
+            if "clist/get" in url:
+                return {"data": {"diff": [{"f14": "银行", "f3": 2.5, "f140": "600000"},
+                                           {"f14": "地产", "f3": 1.5, "f140": "000002"}]}}
             raise AssertionError(url)
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -73,6 +76,9 @@ class RealtimeProviderTests(unittest.TestCase):
             self.assertEqual(stats["market_decliners"], 100)
             self.assertEqual(stats["market_flat"], 5)
             self.assertEqual(stats["market_breadth_ratio"], 2.0)
+            self.assertEqual(stats["sector_by_name"]["银行"]["rank"], 1)
+            self.assertEqual(stats["sector_by_name"]["银行"]["limit_up_count"], 2)
+            self.assertTrue(stats["sector_by_name"]["银行"]["leader_limit_up"])
 
     def test_tencent_is_used_when_eastmoney_quote_has_no_valid_source_time(self):
         fields = [""] * 38
