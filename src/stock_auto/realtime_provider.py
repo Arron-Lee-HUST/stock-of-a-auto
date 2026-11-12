@@ -200,6 +200,43 @@ class EastmoneyTencentRealtimeProvider:
         return result
 
 
+
+    def get_fund_flows(self, symbols: Iterable[str], trade_date: str) -> dict[str, dict[str, Any]]:
+        """Read Eastmoney minute-level estimated order-size fund-flow aggregates."""
+        result: dict[str, dict[str, Any]] = {}
+        for raw in sorted(set(symbols)):
+            symbol = normalize_symbol(raw)
+            try:
+                payload = self._get(
+                    "https://push2.eastmoney.com/api/qt/stock/fflow/kline/get",
+                    {"secid": _secid(symbol), "klt": "1", "lmt": "2",
+                     "fields1": "f1,f2,f3,f7",
+                     "fields2": "f51,f52,f53,f54,f55,f56,f57"},
+                )
+                rows = ((payload.get("data") or {}).get("klines") or [])
+                for line in reversed(rows):
+                    parts = str(line).split(",")
+                    if len(parts) < 6:
+                        continue
+                    raw_time = parts[0].strip()
+                    stamp_value = raw_time if raw_time.startswith(trade_date) else trade_date + " " + raw_time[:5]
+                    stamp = _parse_source_timestamp(stamp_value)
+                    if not stamp:
+                        continue
+                    result[symbol] = {
+                        "symbol": symbol, "trade_date": trade_date,
+                        "source_timestamp": stamp,
+                        "main_net_inflow": _number(parts[1]),
+                        "small_net": _number(parts[2]), "mid_net": _number(parts[3]),
+                        "big_net": _number(parts[4]), "super_big_net": _number(parts[5]),
+                        "source": "eastmoney.stock.fflow.kline",
+                        "flow_kind": "vendor_estimated_order_size_aggregate",
+                    }
+                    break
+            except Exception:
+                LOG.exception("Eastmoney intraday fund flow failed for %s", symbol)
+        return result
+
     def get_market_stats(self, trade_date: str) -> dict[str, Any] | None:
         """Fetch Eastmoney limit-up/down pools and highest consecutive-board count."""
         date_key = trade_date.replace("-", "")
