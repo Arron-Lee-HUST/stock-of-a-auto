@@ -34,7 +34,7 @@ source .venv/bin/activate
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
-## 命令行\n\n安装后可使用 `stock-auto`，支持 `validate-data`、`scan`、`monitor`、`backtest`、`paper-replay`、`sync-akshare`、`spot-akshare`、`serve-live`（兼容别名 `serve-akshare`）。示例数据生成和命令参数见 [deploy/README.md](deploy/README.md)。\n\n## 免费行情源（AKShare）
+## 命令行\n\n安装后可使用 `stock-auto`，支持 `validate-data`、`scan`、`monitor`、`backtest`、`paper-replay`、`sync-akshare`、`refresh-akshare`、`spot-akshare`、`serve-live`（兼容别名 `serve-akshare`）。示例数据生成和命令参数见 [deploy/README.md](deploy/README.md)。\n\n## 免费行情源（AKShare）
 
 ```bash
 pip install -e ".[akshare]"
@@ -112,3 +112,12 @@ print(signal.eligible, signal.score, signal.reasons, signal.warnings)
 竞价量比采用竞昨量比：今日 09:25 最终匹配成交量 / 最近一个已归档交易日的 09:25 最终匹配成交量。首次部署需要积累前一交易日样本；没有基准时不会伪造量比。新入场还必须通过分时 VWAP、五档深度及上游时间戳新鲜度检查。数据不完整时只观察，不产生买入动作。
 
 完整字段映射、09:26 源时间标签处理、限频与故障降级规则见 [docs/data-providers.md](docs/data-providers.md)。
+
+
+增量更新本地日线缓存（默认回看最近日期并留 10 个自然日修正窗口，按股票和交易日 upsert，不重复追加）：
+
+```bash
+stock-auto refresh-akshare --universe-csv data/universe.csv --daily-csv data/daily.csv --lookback-days 10
+```
+
+建议在每个交易日收盘后运行；它只更新本地历史日线，不会自动更新交易日历。
