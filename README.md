@@ -22,7 +22,7 @@
 
 ## 快速开始
 
-需要 Python 3.11 或更高版本，无第三方运行时依赖。
+需要 Python 3.11 或更高版本。核心研究模块无强制第三方运行时依赖；免费 AKShare 数据源需额外安装 `pip install -e ".[akshare]"`。
 
 ```bash
 python -m venv .venv
@@ -34,7 +34,23 @@ source .venv/bin/activate
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
-## 命令行\n\n安装后可使用 `stock-auto`，支持 `validate-data`、`scan`、`monitor`、`backtest` 和 `paper-replay`。示例数据生成和命令参数见 [deploy/README.md](deploy/README.md)。\n\n## 最小调用示例
+## 命令行\n\n安装后可使用 `stock-auto`，支持 `validate-data`、`scan`、`monitor`、`backtest`、`paper-replay`、`sync-akshare`、`spot-akshare` 和 `serve-akshare`。示例数据生成和命令参数见 [deploy/README.md](deploy/README.md)。\n\n## 免费行情源（AKShare）
+
+```bash
+pip install -e ".[akshare]"
+stock-auto sync-akshare --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31 --output data/daily.csv
+stock-auto spot-akshare --universe-csv data/universe.csv --output runtime/spot.csv
+```
+
+持续只读监控需提供真实交易日历 CSV（`trade_date` 列）和本地历史日线缓存：
+
+```bash
+stock-auto serve-akshare --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --calendar-csv data/trading-calendar.csv --positions-csv data/positions.csv
+```
+
+AKShare spot 快照不包含可靠的逐笔、盘口、集合竞价量比和 VWAP；该监控服务会阻止新增买入信号，仅输出观察/风险提示及基于快照的持仓风险事件。不要把它当成自动交易系统。
+
+## 最小调用示例
 
 ```python
 from stock_auto import MarketSnapshot, StrategyConfig, evaluate_candidate
