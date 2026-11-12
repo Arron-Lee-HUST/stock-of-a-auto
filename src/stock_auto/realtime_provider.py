@@ -377,7 +377,7 @@ class EastmoneyTencentRealtimeProvider:
                                          fields[36] if len(fields) > 36 else None,
                                          fields[37] if len(fields) > 37 else None,
                                          "tencent", self.clock().isoformat(), volume_unit="hands",
-                                         amount_unit="10k", source_timestamp=_parse_source_timestamp((fields[30] + " " + fields[31]) if len(fields) > 31 else None))
+                                         amount_unit="10k", source_timestamp=_parse_source_timestamp((fields[10] + " " + fields[11]) if len(fields) > 11 else None))
         except Exception:
             LOG.exception("Tencent fallback quote failed for %s", symbol)
             return None
