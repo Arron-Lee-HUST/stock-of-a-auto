@@ -1,0 +1,11 @@
+[Unit]
+Description=Weekday after-close AKShare daily-bar refresh
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 15:10:00 Asia/Shanghai
+Persistent=true
+RandomizedDelaySec=120
+Unit=stock-auto-refresh.service
+
+[Install]
+WantedBy=timers.target
