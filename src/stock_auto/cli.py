@@ -88,7 +88,7 @@ def main(argv=None) -> int:
     spot_ak.add_argument("--universe-csv")
     spot_ak.add_argument("--output", default="runtime/akshare-spot.csv")
 
-    serve_ak = commands.add_parser("serve-akshare", help="run read-only AKShare polling with fail-closed entry signals")
+    serve_ak = commands.add_parser("serve-live", aliases=["serve-akshare"], help="run Eastmoney-first live monitoring with Tencent/Sina quote fallback")
     serve_ak.add_argument("--daily-csv", required=True, help="cached normalized daily bars")
     serve_ak.add_argument("--universe-csv", required=True)
     serve_ak.add_argument("--start-date", required=True)
@@ -96,6 +96,9 @@ def main(argv=None) -> int:
     serve_ak.add_argument("--positions-csv")
     serve_ak.add_argument("--poll-interval", type=float, default=30.0)
     serve_ak.add_argument("--alerts-db", default="runtime/alerts.sqlite3")
+    serve_ak.add_argument("--auction-db", default="runtime/auction-history.sqlite3")
+    serve_ak.add_argument("--request-timeout", type=float, default=6.0)
+    serve_ak.add_argument("--source-min-interval", type=float, default=0.18)
     serve_ak.add_argument("--health", default="runtime/health.json")
     serve_ak.add_argument("--log-file", default="runtime/service.log")
     serve_ak.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
@@ -139,7 +142,7 @@ def main(argv=None) -> int:
         print(f"AKShare spot snapshot complete: {len(quotes)} rows -> {output}")
         return 0
 
-    if args.command == "serve-akshare":
+    if args.command in {"serve-live", "serve-akshare"}:
         import logging
         import os
         import signal
@@ -153,7 +156,9 @@ def main(argv=None) -> int:
         symbols = _symbols(args.universe_csv)
         calendar = TradingCalendar.from_csv(args.calendar_csv)
         daily = CsvMarketDataProvider(args.daily_csv)
-        live = EastmoneyTencentRealtimeProvider()
+        live = EastmoneyTencentRealtimeProvider(timeout_seconds=args.request_timeout,
+                                                  min_interval_seconds=args.source_min_interval,
+                                                  auction_db_path=args.auction_db)
         monitor = MarketMonitor()
 
         def monitor_cycle(trade_date, checked_at):
