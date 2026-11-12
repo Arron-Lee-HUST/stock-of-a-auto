@@ -70,9 +70,11 @@ class SqliteAlertSink:
     The fingerprint excludes checked_at, so repeated polling of an unchanged
     event is suppressed across process restarts as well as within one process.
     """
-    def __init__(self, path: str | Path) -> None:
+    def __init__(self, path: str | Path, webhook_url: str | None = None, timeout_seconds: float = 8.0) -> None:
         import sqlite3
         self.path = Path(path)
+        self.webhook_url = webhook_url
+        self.timeout_seconds = timeout_seconds
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.path) as db:
             db.execute("""
@@ -80,9 +82,16 @@ class SqliteAlertSink:
                     fingerprint TEXT PRIMARY KEY,
                     trade_date TEXT NOT NULL,
                     created_at TEXT NOT NULL,
-                    payload_json TEXT NOT NULL
+                    payload_json TEXT NOT NULL,
+                    delivered_at TEXT,
+                    last_error TEXT
                 )
             """)
+            columns = {row[1] for row in db.execute("PRAGMA table_info(alerts)")}
+            if "delivered_at" not in columns:
+                db.execute("ALTER TABLE alerts ADD COLUMN delivered_at TEXT")
+            if "last_error" not in columns:
+                db.execute("ALTER TABLE alerts ADD COLUMN last_error TEXT")
 
     def publish(self, payload: dict) -> None:
         import hashlib
@@ -103,6 +112,25 @@ class SqliteAlertSink:
                  datetime.now(timezone.utc).isoformat(),
                  json.dumps(payload, ensure_ascii=False, default=str)),
             )
+            row = db.execute("SELECT payload_json, delivered_at FROM alerts WHERE fingerprint = ?",
+                             (fingerprint,)).fetchone()
+        if self.webhook_url and row and row[1] is None:
+            from urllib.request import Request, urlopen
+            body = row[0].encode("utf-8")
+            request = Request(self.webhook_url, data=body,
+                              headers={"Content-Type": "application/json"}, method="POST")
+            try:
+                with urlopen(request, timeout=self.timeout_seconds) as response:
+                    if response.status < 200 or response.status >= 300:
+                        raise RuntimeError(f"webhook returned HTTP {response.status}")
+                with sqlite3.connect(self.path, timeout=10) as db:
+                    db.execute("UPDATE alerts SET delivered_at = ?, last_error = NULL WHERE fingerprint = ?",
+                               (datetime.now(timezone.utc).isoformat(), fingerprint))
+            except Exception as exc:
+                with sqlite3.connect(self.path, timeout=10) as db:
+                    db.execute("UPDATE alerts SET last_error = ? WHERE fingerprint = ?",
+                               (f"{type(exc).__name__}: {exc}", fingerprint))
+                raise
 
 
 MonitorCallback = Callable[[str, str], MonitorReport]
