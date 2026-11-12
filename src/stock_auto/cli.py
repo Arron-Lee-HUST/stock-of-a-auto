@@ -357,6 +357,8 @@ def main(argv=None) -> int:
                 "quote_sources": {name: sum(1 for item in quotes.values() if item.get("source") == name)
                                   for name in sorted({item.get("source") for item in quotes.values() if item.get("source")})},
                 "order_books_received": len(books),
+                "order_book_sources": {name: sum(1 for item in books.values() if item.get("source") == name)
+                                       for name in sorted({item.get("source") for item in books.values() if item.get("source")})},
                 "order_books_fresh": sum(1 for item in books.values() if source_is_fresh(item.get("source_timestamp"))),
                 "complete_five_level_books": sum(1 for item in books.values()
                                                   if item.get("complete") and source_is_fresh(item.get("source_timestamp"))),
