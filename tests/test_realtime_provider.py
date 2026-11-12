@@ -56,6 +56,36 @@ class RealtimeProviderTests(unittest.TestCase):
 
 
 
+
+    def test_tencent_five_level_book_fallback_when_eastmoney_book_missing(self):
+        fields = [""] * 31
+        fields[1], fields[2] = "浦发银行", "600000"
+        for level in range(5):
+            fields[9 + level * 2] = str(10.00 - level * 0.01)
+            fields[10 + level * 2] = str(100 + level)
+            fields[19 + level * 2] = str(10.01 + level * 0.01)
+            fields[20 + level * 2] = str(120 + level)
+        fields[30] = "20261112093000"
+
+        def transport(url, headers, timeout):
+            if "stock/get" in url:
+                return {"data": {}}
+            if "qt.gtimg.cn" in url:
+                return ('v_sh600000="' + "~".join(fields) + '";').encode("gbk")
+            raise AssertionError(url)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            provider = EastmoneyTencentRealtimeProvider(
+                transport=transport, min_interval_seconds=0,
+                clock=lambda: datetime(2026, 11, 12, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai")),
+                auction_db_path=str(Path(tmp) / "auction.sqlite3"))
+            book = provider.get_order_books(["sh600000"])["sh600000"]
+            self.assertEqual(book["source"], "tencent.qt.gtimg.cn")
+            self.assertTrue(book["complete"])
+            self.assertEqual(book["bid_levels"], 5)
+            self.assertEqual(book["ask_levels"], 5)
+            self.assertEqual(book["bids"][0]["volume_shares"], 10000)
+
     def test_intraday_fund_flow_reads_latest_minute_and_keeps_vendor_estimate_label(self):
         def transport(url, headers, timeout):
             return {"data": {"klines": [
@@ -107,7 +137,7 @@ class RealtimeProviderTests(unittest.TestCase):
         fields = [""] * 38
         fields[1], fields[2], fields[3] = "浦发银行", "600000", "10.5"
         fields[4], fields[5] = "10.24", "10.2"
-        fields[30], fields[31] = "2026-11-12", "09:30:00"
+        fields[30], fields[31] = "20261112093000", "0.26"
         fields[32], fields[33], fields[34] = "2.54", "10.6", "10.1"
         fields[36], fields[37] = "100", "1050"
 
