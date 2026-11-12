@@ -9,6 +9,7 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from .providers import normalize_symbol
+from .auction_history import AuctionHistoryStore
 
 LOG = logging.getLogger(__name__)
 UT = "fa5fd1943c7b386f172d6893dbbd1d0c"
@@ -60,6 +61,7 @@ class EastmoneyTencentRealtimeProvider:
         min_interval_seconds: float = 0.18,
         clock: Callable[[], datetime] | None = None,
         sleeper: Callable[[float], None] = time.sleep,
+        auction_db_path: str = "runtime/auction-history.sqlite3",
     ) -> None:
         self.transport = transport or self._http_json
         self.timeout_seconds = timeout_seconds
@@ -67,6 +69,7 @@ class EastmoneyTencentRealtimeProvider:
         self.clock = clock or (lambda: datetime.now().astimezone())
         self.sleeper = sleeper
         self._last_request = 0.0
+        self.auction_history = AuctionHistoryStore(auction_db_path)
 
     @staticmethod
     def _http_json(url: str, headers: dict[str, str], timeout: float) -> Any:
@@ -187,11 +190,14 @@ class EastmoneyTencentRealtimeProvider:
                     price = _number(parts[2])
                     amount = _number(parts[6])
                     if clock == "09:26" and volume_hands is not None and volume_hands > 0 and _valid_price(price):
+                        volume_shares = volume_hands * 100
                         result[symbol] = {
                             "symbol": symbol, "trade_date": trade_date,
                             "logical_auction_time": "09:25", "source_timestamp": stamp,
-                            "auction_price": price, "auction_volume_shares": volume_hands * 100,
-                            "auction_amount_cny": amount, "source": "eastmoney.trends2",
+                            "auction_price": price, "auction_volume_shares": volume_shares,
+                            "auction_amount_cny": amount,
+                            "auction_volume_ratio": self.auction_history.record(symbol, trade_date, volume_shares),
+                            "source": "eastmoney.trends2",
                         }
                         break
             except Exception:
