@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh cached A-share daily bars from AKShare
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=stockauto
+Group=stockauto
+WorkingDirectory=/opt/stock-of-a-auto
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/stock-of-a-auto/.venv/bin/stock-auto refresh-akshare --universe-csv /opt/stock-of-a-auto/data/universe.csv --daily-csv /opt/stock-of-a-auto/data/daily.csv --lookback-days 10
