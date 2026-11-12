@@ -204,6 +204,7 @@ def main(argv=None) -> int:
             quotes = {item["symbol"]: item for item in live.get_quotes(watch_symbols)}
             books = live.get_order_books(watch_symbols)
             auctions = live.get_auction_observations(watch_symbols, trade_date)
+            market_stats = live.get_market_stats(trade_date)
             snapshots = {}
             for symbol in sorted(set(signals) | set(positions)):
                 if symbol not in by_symbol:
@@ -255,9 +256,15 @@ def main(argv=None) -> int:
                 for snapshot in snapshots.values():
                     archive.write(json.dumps({"checked_at": checked_at, **asdict(snapshot)}, ensure_ascii=False) + "\\n")
 
-            # Market breadth is still unavailable from this lightweight collector;
-            # missing auction, VWAP, or five-level book fields fail closed.
-            market = MarketSnapshot(symbol="market", trade_date=trade_date)
+            if market_stats:
+                with archive_path.open("a", encoding="utf-8") as archive:
+                    archive.write(json.dumps({"checked_at": checked_at, "type": "market_stats", **market_stats}, ensure_ascii=False) + "\\n")
+            market = MarketSnapshot(
+                symbol="market", trade_date=trade_date,
+                market_limit_up_count=market_stats.get("market_limit_up_count") if market_stats else None,
+                market_limit_down_count=market_stats.get("market_limit_down_count") if market_stats else None,
+                market_max_streak=market_stats.get("market_max_streak") if market_stats else None,
+            )
             return monitor.evaluate(trade_date, checked_at, snapshots, signals, positions, market)
 
         log_path = Path(args.log_file)
