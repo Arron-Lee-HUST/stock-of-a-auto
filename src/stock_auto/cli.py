@@ -160,7 +160,8 @@ def main(argv=None) -> int:
         daily = CsvMarketDataProvider(args.daily_csv)
         live = EastmoneyTencentRealtimeProvider(timeout_seconds=args.request_timeout,
                                                   min_interval_seconds=args.source_min_interval,
-                                                  auction_db_path=args.auction_db)
+                                                  auction_db_path=args.auction_db,
+                                                  max_quote_age_seconds=args.max_data_age)
         monitor = MarketMonitor()
 
         def monitor_cycle(trade_date, checked_at):
