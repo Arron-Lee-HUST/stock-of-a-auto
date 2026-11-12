@@ -53,3 +53,16 @@ python examples/generate_demo_data.py
 ```
 
 演示数据并非真实行情，不可用于策略有效性评估。
+
+
+## AKShare 免费适配器
+
+安装：`pip install -e ".[akshare]"`。适配器使用 `stock_zh_a_hist(..., period="daily", adjust="")` 下载未复权日线，使用 `stock_zh_a_spot_em` 读取普通全市场 spot 快照。历史成交量按手转换为股，成交额按人民币元保留。
+
+`AkshareMarketDataProvider.get_spot_quotes()` 返回采集时间、来源、价格、涨跌幅、成交量和成交额。Spot 快照不是逐笔行情、盘口深度或集合竞价专用接口，不提供可直接用于交易的竞价量比和 VWAP。上游接口可用性、字段和访问频率可能变化，免费接口没有 SLA。
+
+当前 CLI：`sync-akshare` 下载标准日线 CSV；`spot-akshare` 导出 spot 快照；`serve-akshare` 启动只读轮询服务。该服务在缺少竞价/VWAP/市场宽度时 fail closed，不产生新增买入动作。
+
+## Tushare 免费权限边界
+
+Tushare Pro 日线接口权限与账号积分有关；分钟、实时行情、集合竞价等接口可能要求独立授权。Token 应通过环境变量配置。不能假设免费账号可以使用所有接口。
