@@ -1,0 +1,12 @@
+[Unit]
+Description=Refresh A-share trading calendar from AKShare/Sina
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=stockauto
+Group=stockauto
+WorkingDirectory=/opt/stock-of-a-auto
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/stock-of-a-auto/.venv/bin/stock-auto sync-calendar-akshare --output /opt/stock-of-a-auto/data/trading-calendar.csv
