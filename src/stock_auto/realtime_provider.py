@@ -99,7 +99,7 @@ class EastmoneyTencentRealtimeProvider:
         try:
             payload = self._get(
                 "https://push2.eastmoney.com/api/qt/ulist.np/get",
-                {"fltt": "2", "invt": "2", "fields": "f2,f3,f4,f5,f6,f12,f13,f14,f15,f16,f17,f18",
+                {"fltt": "2", "invt": "2", "fields": "f2,f3,f4,f5,f6,f10,f12,f13,f14,f15,f16,f17,f18",
                  "secids": secids, "ut": UT},
             )
             rows = (payload.get("data") or {}).get("diff") or []
@@ -111,6 +111,9 @@ class EastmoneyTencentRealtimeProvider:
                     "eastmoney", self.clock().isoformat(),
                 )
                 if quote:
+                    quote["intraday_volume_ratio"] = _number(row.get("f10"))
+                    quote["vwap"] = (quote["amount_cny"] / quote["volume_shares"]
+                                     if quote.get("amount_cny") and quote.get("volume_shares") else None)
                     output[symbol] = quote
         except Exception:
             LOG.exception("Eastmoney batch quote failed; falling back to Tencent/Sina")
@@ -152,6 +155,8 @@ class EastmoneyTencentRealtimeProvider:
                     result[symbol] = {
                         "symbol": symbol, "bids": bids, "asks": asks,
                         "bid_depth_shares": bid_total, "ask_depth_shares": ask_total,
+                        "best_bid_price": bids[0]["price"] if bids else None,
+                        "best_ask_price": asks[0]["price"] if asks else None,
                         "book_imbalance": ((bid_total - ask_total) / (bid_total + ask_total))
                             if bid_total + ask_total else None,
                         "captured_at": self.clock().isoformat(), "source": "eastmoney.stock.get",
@@ -273,5 +278,7 @@ class EastmoneyTencentRealtimeProvider:
             "high": _number(high), "low": _number(low),
             "volume_shares": volume_n, "amount_cny": amount_n,
             "captured_at": captured_at, "source": source,
+            "vwap": (amount_n / volume_n if amount_n and volume_n else None),
+            "intraday_volume_ratio": None,
             "auction_available": False, "order_book_available": False,
         }
