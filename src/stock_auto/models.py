@@ -47,6 +47,9 @@ class MarketSnapshot:
     bid_depth_shares: float | None = None
     ask_depth_shares: float | None = None
     order_book_imbalance: float | None = None
+    order_book_complete: bool | None = None
+    bid_levels: int | None = None
+    ask_levels: int | None = None
     quote_source: str | None = None
     order_book_source: str | None = None
     auction_source: str | None = None
