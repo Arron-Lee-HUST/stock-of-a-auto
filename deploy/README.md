@@ -98,3 +98,8 @@ stock-auto refresh-akshare --universe-csv data/universe.csv --daily-csv data/dai
 
 
 可选自动化：仓库提供 `deploy/stock-auto-refresh.service.example` 与 `deploy/stock-auto-refresh.timer.example`，在工作日 15:10（Asia/Shanghai）触发日线增量刷新，并带 Persistent 与随机延迟。安装前修改路径、用户、股票池和输出 CSV；它不负责更新交易日历，也不会在休市日凭空生成行情。
+
+
+## 每日交易日历刷新
+
+仓库提供 `stock-auto sync-calendar-akshare --output data/trading-calendar.csv`，通过 AKShare/Sina 历史交易日历接口生成 `trade_date` 列。`deploy/stock-auto-calendar.service.example` 与 `.timer.example` 可在工作日 08:00（Asia/Shanghai）刷新。请在启用监控前检查输出文件最新日期是否覆盖当天；如果数据源未及时更新或没有当天记录，MonitorService 会按 fail-closed 规则不运行。该接口是历史交易日列表，不应假定一定包含未来日期；生产部署应保留人工核验/交易所日历校验。
