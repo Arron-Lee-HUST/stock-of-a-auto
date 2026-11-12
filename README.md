@@ -130,3 +130,5 @@ stock-auto sync-calendar-akshare --output data/trading-calendar.csv
 ```
 
 此接口提供已公布的历史交易日列表；上线前仍须确认文件包含当天，未包含时监控会安全停止。
+
+实时监控默认最多逐只轮询评分前 30 个候选和全部持仓，采集东方财富五档盘口、最终竞价数据、分钟资金流估算；普通报价按东财→腾讯→新浪降级。可用 `--max-candidates` 与 `--source-min-interval` 控制请求规模和限频。
