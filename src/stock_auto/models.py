@@ -61,6 +61,10 @@ class MarketSnapshot:
     market_limit_up_count: int | None = None
     market_limit_down_count: int | None = None
     market_max_streak: int | None = None
+    market_advancers: int | None = None
+    market_decliners: int | None = None
+    market_flat: int | None = None
+    market_breadth_ratio: float | None = None
 
 
 @dataclass(slots=True)
