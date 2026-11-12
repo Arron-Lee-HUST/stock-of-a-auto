@@ -208,11 +208,33 @@ class EastmoneyTencentRealtimeProvider:
             down_pool = down_data.get("pool") or []
             streaks = [_number(item.get("lbc")) for item in up_pool]
             valid_streaks = [int(value) for value in streaks if value is not None and value >= 0]
+            advancers = decliners = flat = None
+            try:
+                breadth_payload = self._get("https://push2ex.eastmoney.com/getTopicZDFenBu", params)
+                buckets = ((breadth_payload.get("data") or {}).get("fenbu") or [])
+                if buckets:
+                    advancers = decliners = flat = 0
+                    for bucket in buckets:
+                        for key, raw_count in bucket.items():
+                            change_bucket, count = _number(key), _number(raw_count)
+                            if change_bucket is None or count is None:
+                                continue
+                            if change_bucket > 0:
+                                advancers += int(count)
+                            elif change_bucket < 0:
+                                decliners += int(count)
+                            else:
+                                flat += int(count)
+            except Exception:
+                LOG.exception("Eastmoney market breadth distribution failed")
             return {
                 "trade_date": trade_date,
                 "market_limit_up_count": len(up_pool),
                 "market_limit_down_count": len(down_pool),
                 "market_max_streak": max(valid_streaks, default=0),
+                "market_advancers": advancers, "market_decliners": decliners,
+                "market_flat": flat,
+                "market_breadth_ratio": (advancers / decliners if advancers is not None and decliners else None),
                 "captured_at": self.clock().isoformat(),
                 "source": "eastmoney.push2ex",
             }
