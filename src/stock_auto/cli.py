@@ -154,7 +154,8 @@ def main(argv=None) -> int:
         return 0
 
     if args.command == "refresh-akshare":
-        from datetime import date, timedelta
+        from datetime import date, datetime, timedelta
+        from zoneinfo import ZoneInfo
         from .akshare_provider import AkshareMarketDataProvider
         symbols = _symbols(args.universe_csv)
         target = Path(args.daily_csv)
@@ -163,11 +164,16 @@ def main(argv=None) -> int:
         elif target.exists():
             with target.open("r", encoding="utf-8-sig", newline="") as stream:
                 cached = list(csv.DictReader(stream))
-            dates = [row["trade_date"] for row in cached if row.get("trade_date")]
+            latest_by_symbol = {}
+            for row in cached:
+                symbol, trade_date = row.get("symbol"), row.get("trade_date")
+                if symbol and trade_date:
+                    latest_by_symbol[symbol] = max(trade_date, latest_by_symbol.get(symbol, trade_date))
+            dates = list(latest_by_symbol.values())
             start_date = (date.fromisoformat(min(dates)) - timedelta(days=args.lookback_days)).isoformat() if dates else "2020-01-01"
         else:
             start_date = "2020-01-01"
-        end_date = args.end_date or date.today().isoformat()
+        end_date = args.end_date or datetime.now(ZoneInfo("Asia/Shanghai")).date().isoformat()
         bars = AkshareMarketDataProvider().get_bars(symbols, start_date, end_date)
         count = _upsert_daily_bars(target, bars)
         print(f"AKShare incremental refresh complete: {count} fetched rows merged -> {target}")
