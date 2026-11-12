@@ -78,6 +78,16 @@ def main(argv=None) -> int:
     monitor.add_argument("--positions-csv")
     monitor.add_argument("--output", default="reports/monitor.json")
 
+    sync_ak = commands.add_parser("sync-akshare", help="download AKShare daily bars into normalized CSV")
+    sync_ak.add_argument("--universe-csv", required=True)
+    sync_ak.add_argument("--start-date", required=True)
+    sync_ak.add_argument("--end-date", required=True)
+    sync_ak.add_argument("--output", default="data/akshare-daily.csv")
+
+    spot_ak = commands.add_parser("spot-akshare", help="export an AKShare latest spot snapshot")
+    spot_ak.add_argument("--universe-csv")
+    spot_ak.add_argument("--output", default="runtime/akshare-spot.csv")
+
     paper = commands.add_parser("paper-replay", help="replay pre-approved paper orders against daily bars")
     paper.add_argument("--daily-csv", required=True)
     paper.add_argument("--orders-csv", required=True)
@@ -85,6 +95,38 @@ def main(argv=None) -> int:
     paper.add_argument("--output", default="reports/paper-account.json")
 
     args = parser.parse_args(argv)
+    if args.command == "sync-akshare":
+        from .akshare_provider import AkshareMarketDataProvider
+        provider = AkshareMarketDataProvider()
+        bars = provider.get_bars(_symbols(args.universe_csv), args.start_date, args.end_date)
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with output.open("w", encoding="utf-8", newline="") as stream:
+            writer = csv.writer(stream)
+            writer.writerow(["symbol", "trade_date", "open", "high", "low", "close",
+                             "volume", "amount", "prev_close", "is_suspended", "limit_pct"])
+            for bar in bars:
+                writer.writerow([bar.symbol, bar.trade_date, bar.open, bar.high, bar.low,
+                                 bar.close, bar.volume, bar.amount, bar.prev_close,
+                                 bar.is_suspended, bar.limit_pct])
+        print(f"AKShare daily sync complete: {len(bars)} rows -> {output}")
+        return 0
+
+    if args.command == "spot-akshare":
+        from .akshare_provider import AkshareMarketDataProvider
+        symbols = _symbols(args.universe_csv) if args.universe_csv else None
+        quotes = AkshareMarketDataProvider().get_spot_quotes(symbols)
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        fields = ["symbol", "name", "price", "pct_change", "volume_shares",
+                  "amount_cny", "captured_at", "source"]
+        with output.open("w", encoding="utf-8", newline="") as stream:
+            writer = csv.DictWriter(stream, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(quotes)
+        print(f"AKShare spot snapshot complete: {len(quotes)} rows -> {output}")
+        return 0
+
     if args.command == "validate-data":
         bars = CsvMarketDataProvider(args.daily_csv).get_bars(
             _symbols(args.universe_csv), args.start_date, args.end_date)
