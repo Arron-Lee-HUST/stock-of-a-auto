@@ -136,7 +136,7 @@ def main(argv=None) -> int:
     serve_ak.add_argument("--request-timeout", type=float, default=6.0)
     serve_ak.add_argument("--source-min-interval", type=float, default=0.18)
     serve_ak.add_argument("--max-data-age", type=float, default=120.0)
-    serve_ak.add_argument("--max-candidates", type=int, default=50)
+    serve_ak.add_argument("--max-candidates", type=int, default=30)
     serve_ak.add_argument("--market-data-jsonl", default="runtime/market-data.jsonl")
     serve_ak.add_argument("--health", default="runtime/health.json")
     serve_ak.add_argument("--log-file", default="runtime/service.log")
@@ -276,6 +276,7 @@ def main(argv=None) -> int:
             quotes = {item["symbol"]: item for item in live.get_quotes(watch_symbols)}
             books = live.get_order_books(watch_symbols)
             auctions = live.get_auction_observations(watch_symbols, trade_date)
+            flows = live.get_fund_flows(watch_symbols, trade_date)
             market_stats = live.get_market_stats(trade_date)
             snapshots = {}
             for symbol in sorted(set(signals) | set(positions)):
@@ -285,6 +286,7 @@ def main(argv=None) -> int:
                 quote = quotes.get(symbol)
                 book = books.get(symbol)
                 auction = auctions.get(symbol)
+                flow = flows.get(symbol)
                 snapshot.trade_date = trade_date
                 if quote and quote.get("price") is not None and source_is_fresh(quote.get("source_timestamp")):
                     snapshot.price = quote["price"]
@@ -318,6 +320,14 @@ def main(argv=None) -> int:
                     snapshot.sector_rank = sector.get("rank")
                     snapshot.sector_limit_up_count = sector.get("limit_up_count")
                     snapshot.sector_leader_limit_up = sector.get("leader_limit_up")
+                if flow:
+                    snapshot.main_net_inflow = flow.get("main_net_inflow")
+                    snapshot.fund_flow_small_net = flow.get("small_net")
+                    snapshot.fund_flow_mid_net = flow.get("mid_net")
+                    snapshot.fund_flow_big_net = flow.get("big_net")
+                    snapshot.fund_flow_super_big_net = flow.get("super_big_net")
+                    snapshot.fund_flow_source = flow.get("source")
+                    snapshot.fund_flow_source_timestamp = flow.get("source_timestamp")
                 if auction:
                     snapshot.auction_pct = ((auction["auction_price"] / snapshot.prev_close - 1) * 100
                                              if snapshot.prev_close else None)
