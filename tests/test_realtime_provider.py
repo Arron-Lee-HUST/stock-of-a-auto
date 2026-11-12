@@ -1,5 +1,7 @@
 import tempfile
 import unittest
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from stock_auto.auction_history import AuctionHistoryStore
@@ -53,11 +55,13 @@ class RealtimeProviderTests(unittest.TestCase):
                 "f12": "600000", "f13": "1", "f2": "10.5", "f3": "2.5",
                 "f5": "100", "f6": "105000", "f10": "1.8",
                 "f17": "10.2", "f18": "10.24", "f15": "10.6", "f16": "10.1",
+                "f86": "202611120930",
             }]}}
 
         with tempfile.TemporaryDirectory() as tmp:
             provider = EastmoneyTencentRealtimeProvider(
                 transport=transport, min_interval_seconds=0,
+                clock=lambda: datetime(2026, 11, 12, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai")),
                 auction_db_path=str(Path(tmp) / "auction.sqlite3"))
             quote = provider.get_quotes(["sh600000"])[0]
             self.assertEqual(quote["source"], "eastmoney")
