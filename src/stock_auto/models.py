@@ -40,8 +40,6 @@ class MarketSnapshot:
     intraday_volume_ratio: float | None = None
     intraday_high: float | None = None
     intraday_low: float | None = None
-    vwap: float | None = None
-    intraday_volume_ratio: float | None = None
     auction_matched_volume: float | None = None
     auction_amount: float | None = None
     best_bid_price: float | None = None
