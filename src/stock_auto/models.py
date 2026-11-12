@@ -30,6 +30,7 @@ class MarketSnapshot:
     fund_flow_big_net: float | None = None
     fund_flow_super_big_net: float | None = None
     fund_flow_source: str | None = None
+    fund_flow_kind: str | None = None
     fund_flow_source_timestamp: str | None = None
     amplitude: float | None = None
     recent_limit_up: bool | None = None
