@@ -14,6 +14,8 @@ def evaluate_entry(snapshot: MarketSnapshot, signal: Signal, config: StrategyCon
         return Decision("wait", ["竞价涨幅超出允许区间"], [f"竞价涨幅={snapshot.auction_pct:.2f}%"])
     if snapshot.auction_volume_ratio < cfg.min_auction_volume_ratio:
         return Decision("wait", ["竞价成交量不足"], [])
+    if not snapshot.quote_source_timestamp or not snapshot.order_book_source_timestamp:
+        return Decision("wait", ["行情或盘口缺少上游时间戳，无法验证数据新鲜度"], ["不使用仅有本地采集时间的数据触发入场"])
     if snapshot.order_book_imbalance is None or snapshot.bid_depth_shares is None or snapshot.ask_depth_shares is None:
         return Decision("wait", ["五档盘口数据不完整，暂不生成入场信号"], ["缺少买卖盘深度或盘口失衡指标"])
     if snapshot.price is None or snapshot.vwap is None:
