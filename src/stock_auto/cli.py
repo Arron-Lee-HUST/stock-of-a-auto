@@ -117,6 +117,9 @@ def main(argv=None) -> int:
     refresh_ak.add_argument("--end-date")
     refresh_ak.add_argument("--lookback-days", type=int, default=10)
 
+    calendar_ak = commands.add_parser("sync-calendar-akshare", help="refresh trade calendar CSV from AKShare/Sina")
+    calendar_ak.add_argument("--output", default="data/trading-calendar.csv")
+
     spot_ak = commands.add_parser("spot-akshare", help="export an AKShare latest spot snapshot")
     spot_ak.add_argument("--universe-csv")
     spot_ak.add_argument("--output", default="runtime/akshare-spot.csv")
@@ -178,6 +181,25 @@ def main(argv=None) -> int:
         bars = AkshareMarketDataProvider().get_bars(symbols, start_date, end_date)
         count = _upsert_daily_bars(target, bars)
         print(f"AKShare incremental refresh complete: {count} fetched rows merged -> {target}")
+        return 0
+
+    if args.command == "sync-calendar-akshare":
+        import pandas as pd
+        import akshare as ak
+        frame = ak.tool_trade_date_hist_sina()
+        if frame is None or frame.empty:
+            raise RuntimeError("AKShare/Sina returned an empty trade calendar")
+        column = "trade_date" if "trade_date" in frame.columns else frame.columns[0]
+        dates = sorted({pd.to_datetime(value).date().isoformat() for value in frame[column].dropna()})
+        if not dates:
+            raise RuntimeError("AKShare/Sina trade calendar contains no valid dates")
+        output = Path(args.output)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with output.open("w", encoding="utf-8", newline="") as stream:
+            writer = csv.writer(stream)
+            writer.writerow(["trade_date"])
+            writer.writerows([[value] for value in dates])
+        print(f"Trade calendar refreshed: {len(dates)} dates -> {output}; latest={dates[-1]}")
         return 0
 
     if args.command == "spot-akshare":
