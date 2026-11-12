@@ -313,6 +313,10 @@ def main(argv=None) -> int:
                 market_limit_up_count=market_stats.get("market_limit_up_count") if market_stats else None,
                 market_limit_down_count=market_stats.get("market_limit_down_count") if market_stats else None,
                 market_max_streak=market_stats.get("market_max_streak") if market_stats else None,
+                market_advancers=market_stats.get("market_advancers") if market_stats else None,
+                market_decliners=market_stats.get("market_decliners") if market_stats else None,
+                market_flat=market_stats.get("market_flat") if market_stats else None,
+                market_breadth_ratio=market_stats.get("market_breadth_ratio") if market_stats else None,
             )
             return monitor.evaluate(trade_date, checked_at, snapshots, signals, positions, market)
 
