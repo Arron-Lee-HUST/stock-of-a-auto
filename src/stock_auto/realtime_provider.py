@@ -21,7 +21,7 @@ HEADERS = {
 QUOTE_FIELDS = ",".join([
     "f43", "f44", "f45", "f46", "f47", "f48", "f50", "f57", "f58",
     "f60", "f86", "f169", "f170", "f168",
-    "f19", "f20", "f17", "f18", "f15", "f16", "f13", "f14", "f11", "f12",
+    "f19", "f20", "f17", "f18", "f15", "f16", "f13", "f14", "f11", "f12", "f100",
     "f39", "f40", "f37", "f38", "f35", "f36", "f33", "f34", "f31", "f32",
 ])
 
@@ -118,6 +118,7 @@ class EastmoneyTencentRealtimeProvider:
                 )
                 if quote:
                     quote["intraday_volume_ratio"] = _number(row.get("f10"))
+                    quote["industry"] = row.get("f100")
                     quote["source_timestamp"] = _parse_source_timestamp(row.get("f86"))
                     quote["vwap"] = (quote["amount_cny"] / quote["volume_shares"]
                                      if quote.get("amount_cny") and quote.get("volume_shares") else None)
@@ -183,6 +184,7 @@ class EastmoneyTencentRealtimeProvider:
                         "book_imbalance": ((bid_total - ask_total) / (bid_total + ask_total))
                             if bid_total + ask_total else None,
                         "bid_levels": len(bids), "ask_levels": len(asks),
+                        "industry": data.get("f100"),
                         "complete": len(bids) == 5 and len(asks) == 5,
                         "captured_at": self.clock().isoformat(), "source_timestamp": _parse_source_timestamp(data.get("f86")), "source": "eastmoney.stock.get",
                         "levels": 5,
@@ -227,6 +229,35 @@ class EastmoneyTencentRealtimeProvider:
                                 flat += int(count)
             except Exception:
                 LOG.exception("Eastmoney market breadth distribution failed")
+            sector_by_name = {}
+            try:
+                sector_payload = self._get(
+                    "https://push2.eastmoney.com/api/qt/clist/get",
+                    {"pn": "1", "pz": "100", "po": "1", "fid": "f3", "fs": "m:90+t:2",
+                     "fltt": "2", "invt": "2", "fields": "f3,f12,f14,f128,f140", "ut": UT},
+                )
+                raw_sectors = ((sector_payload.get("data") or {}).get("diff") or [])
+                if isinstance(raw_sectors, dict):
+                    raw_sectors = [raw_sectors[key] for key in sorted(raw_sectors, key=lambda x: int(x))]
+                up_codes = {str(item.get("c", "")) for item in up_pool}
+                limitups_by_sector = {}
+                for item in up_pool:
+                    name = item.get("hybk")
+                    if name:
+                        limitups_by_sector[name] = limitups_by_sector.get(name, 0) + 1
+                for rank, item in enumerate(raw_sectors, start=1):
+                    name = item.get("f14")
+                    if not name:
+                        continue
+                    leader_code = str(item.get("f140") or "")
+                    sector_by_name[name] = {
+                        "rank": rank, "change_pct": _number(item.get("f3")),
+                        "limit_up_count": limitups_by_sector.get(name, 0),
+                        "leader_limit_up": leader_code in up_codes if leader_code else None,
+                        "leader_code": leader_code or None,
+                    }
+            except Exception:
+                LOG.exception("Eastmoney industry board ranking failed")
             return {
                 "trade_date": trade_date,
                 "market_limit_up_count": len(up_pool),
@@ -235,6 +266,7 @@ class EastmoneyTencentRealtimeProvider:
                 "market_advancers": advancers, "market_decliners": decliners,
                 "market_flat": flat,
                 "market_breadth_ratio": (advancers / decliners if advancers is not None and decliners else None),
+                "sector_by_name": sector_by_name,
                 "captured_at": self.clock().isoformat(),
                 "source": "eastmoney.push2ex",
             }
