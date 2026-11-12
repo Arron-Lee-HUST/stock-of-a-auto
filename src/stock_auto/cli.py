@@ -287,8 +287,11 @@ def main(argv=None) -> int:
                 book = books.get(symbol)
                 auction = auctions.get(symbol)
                 flow = flows.get(symbol)
+                quote_fresh = bool(quote and source_is_fresh(quote.get("source_timestamp")))
+                book_fresh = bool(book and source_is_fresh(book.get("source_timestamp")))
+                flow_fresh = bool(flow and source_is_fresh(flow.get("source_timestamp")))
                 snapshot.trade_date = trade_date
-                if quote and quote.get("price") is not None and source_is_fresh(quote.get("source_timestamp")):
+                if quote_fresh and quote.get("price") is not None:
                     snapshot.price = quote["price"]
                     snapshot.close = quote["price"]
                     snapshot.pct_change = quote.get("pct_change")
@@ -302,7 +305,7 @@ def main(argv=None) -> int:
                     # Never fall back to yesterday's close for a live exit decision.
                     snapshot.price = None
                     snapshot.close = None
-                if book and source_is_fresh(book.get("source_timestamp")):
+                if book_fresh:
                     snapshot.best_bid_price = book.get("best_bid_price")
                     snapshot.best_ask_price = book.get("best_ask_price")
                     snapshot.bid_depth_shares = book.get("bid_depth_shares")
@@ -314,13 +317,13 @@ def main(argv=None) -> int:
                     snapshot.order_book_source = book.get("source")
                     snapshot.order_book_captured_at = book.get("captured_at")
                     snapshot.order_book_source_timestamp = book.get("source_timestamp")
-                industry = (quote.get("industry") if quote else None) or (book.get("industry") if book else None)
+                industry = (quote.get("industry") if quote_fresh else None) or (book.get("industry") if book_fresh else None)
                 sector = (market_stats or {}).get("sector_by_name", {}).get(industry) if industry else None
                 if sector:
                     snapshot.sector_rank = sector.get("rank")
                     snapshot.sector_limit_up_count = sector.get("limit_up_count")
                     snapshot.sector_leader_limit_up = sector.get("leader_limit_up")
-                if flow and source_is_fresh(flow.get("source_timestamp")):
+                if flow_fresh:
                     snapshot.main_net_inflow = flow.get("main_net_inflow")
                     snapshot.fund_flow_small_net = flow.get("small_net")
                     snapshot.fund_flow_mid_net = flow.get("mid_net")
@@ -344,6 +347,28 @@ def main(argv=None) -> int:
                 for snapshot in snapshots.values():
                     archive.write(json.dumps({"checked_at": checked_at, **asdict(snapshot)}, ensure_ascii=False) + "\\n")
 
+
+            diagnostics = {
+                "type": "data_quality",
+                "checked_at": checked_at,
+                "watch_symbols": len(watch_symbols),
+                "quotes_received": len(quotes),
+                "quotes_fresh": sum(1 for item in quotes.values() if source_is_fresh(item.get("source_timestamp"))),
+                "quote_sources": {name: sum(1 for item in quotes.values() if item.get("source") == name)
+                                  for name in sorted({item.get("source") for item in quotes.values() if item.get("source")})},
+                "order_books_received": len(books),
+                "order_books_fresh": sum(1 for item in books.values() if source_is_fresh(item.get("source_timestamp"))),
+                "complete_five_level_books": sum(1 for item in books.values()
+                                                  if item.get("complete") and source_is_fresh(item.get("source_timestamp"))),
+                "auction_observations": len(auctions),
+                "auction_ratios_ready": sum(1 for item in auctions.values() if item.get("auction_volume_ratio") is not None),
+                "fund_flow_observations": len(flows),
+                "fund_flows_fresh": sum(1 for item in flows.values() if source_is_fresh(item.get("source_timestamp"))),
+                "market_stats_available": market_stats is not None,
+                "industry_boards": len((market_stats or {}).get("sector_by_name", {})),
+            }
+            with archive_path.open("a", encoding="utf-8") as archive:
+                archive.write(json.dumps(diagnostics, ensure_ascii=False) + "\n")
             if market_stats:
                 with archive_path.open("a", encoding="utf-8") as archive:
                     archive.write(json.dumps({"checked_at": checked_at, "type": "market_stats", **market_stats}, ensure_ascii=False) + "\\n")
