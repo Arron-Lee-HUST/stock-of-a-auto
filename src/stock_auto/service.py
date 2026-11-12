@@ -133,6 +133,35 @@ class SqliteAlertSink:
                 raise
 
 
+    def flush(self) -> None:
+        """Retry every undelivered webhook row; safe to call on each poll cycle."""
+        import sqlite3
+        from urllib.request import Request, urlopen
+        from datetime import datetime, timezone
+
+        if not self.webhook_url:
+            return
+        with sqlite3.connect(self.path, timeout=10) as db:
+            pending = db.execute(
+                "SELECT fingerprint, payload_json FROM alerts WHERE delivered_at IS NULL ORDER BY created_at"
+            ).fetchall()
+        for fingerprint, payload_json in pending:
+            request = Request(self.webhook_url, data=payload_json.encode("utf-8"),
+                              headers={"Content-Type": "application/json"}, method="POST")
+            try:
+                with urlopen(request, timeout=self.timeout_seconds) as response:
+                    if response.status < 200 or response.status >= 300:
+                        raise RuntimeError(f"webhook returned HTTP {response.status}")
+                with sqlite3.connect(self.path, timeout=10) as db:
+                    db.execute("UPDATE alerts SET delivered_at = ?, last_error = NULL WHERE fingerprint = ?",
+                               (datetime.now(timezone.utc).isoformat(), fingerprint))
+            except Exception as exc:
+                with sqlite3.connect(self.path, timeout=10) as db:
+                    db.execute("UPDATE alerts SET last_error = ? WHERE fingerprint = ?",
+                               (f"{type(exc).__name__}: {exc}", fingerprint))
+                raise
+
+
 MonitorCallback = Callable[[str, str], MonitorReport]
 
 
@@ -202,6 +231,9 @@ class MonitorService:
                 if fingerprint not in self._seen:
                     self.alert_sink.publish(payload)
                     self._seen.add(fingerprint)
+            flush = getattr(self.alert_sink, "flush", None)
+            if callable(flush):
+                flush()
             self._last_success = moment.isoformat()
             self._last_error = None
             self._write_health("healthy", moment)
