@@ -110,3 +110,8 @@ stock-auto serve-live --daily-csv data/daily.csv --universe-csv data/universe.cs
 ### 市场情绪统计
 
 监控服务额外读取东方财富 `push2ex` 的 `getTopicZTPool` 与 `getTopicDTPool`，以涨停池/跌停池条目数形成市场涨跌停家数，并从涨停池 `lbc` 取最大连板数。接口返回 `data=null` 或请求失败时，市场情绪字段保持 None，风控层继续进入 cautious，不用 0 冒充正常市场状态。
+
+
+### 市场广度与行业热度
+
+`getTopicZDFenBu` 返回的涨跌幅分布用于归纳上涨家数、下跌家数、平盘家数和上涨/下跌比。行业热度来自东方财富行业板块 `clist/get` 排名，个股行业名由实时行情字段 f100 关联；涨停池的 `hybk` 用于统计行业涨停家数，板块领涨股代码与涨停池交叉判断龙头是否涨停。若行业名或领涨股代码无法匹配，相关字段保持 None，不猜测关联。
