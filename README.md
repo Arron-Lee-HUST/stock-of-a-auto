@@ -34,7 +34,11 @@ source .venv/bin/activate
 PYTHONPATH=src python -m unittest discover -s tests -v
 ```
 
-## 命令行\n\n安装后可使用 `stock-auto`，支持 `validate-data`、`scan`、`monitor`、`backtest`、`paper-replay`、`sync-akshare`、`refresh-akshare`、`spot-akshare`、`serve-live`（兼容别名 `serve-akshare`）。示例数据生成和命令参数见 [deploy/README.md](deploy/README.md)。\n\n## 免费行情源（AKShare）
+## 命令行
+
+安装后可使用 `stock-auto`，支持 `validate-data`、`scan`、`monitor`、`backtest`、`paper-replay`、`sync-akshare`、`refresh-akshare`、`spot-akshare`、`serve-live`（兼容别名 `serve-akshare`）。示例数据生成和命令参数见 [deploy/README.md](deploy/README.md)。
+
+## 免费行情源（AKShare）
 
 ```bash
 pip install -e ".[akshare]"
@@ -92,7 +96,9 @@ print(signal.eligible, signal.score, signal.reasons, signal.warnings)
 - `src/stock_auto/portfolio_risk.py`：组合级风控与熔断。
 - `docs/monitoring.md`、`docs/risk-controls.md`：监控和风控说明。
 - `src/stock_auto/data.py`：标准日线模型、行情数据协议和 CSV 适配器。
-- `src/stock_auto/providers.py`：Tushare Pro 可选适配器和代码转换。\n- `src/stock_auto/realtime_provider.py`：东方财富优先、腾讯和新浪兜底的实时行情、竞价与五档盘口采集。\n- `src/stock_auto/auction_history.py`：竞价成交量历史归档与竞昨量比计算。
+- `src/stock_auto/providers.py`：Tushare Pro 可选适配器和代码转换。
+- `src/stock_auto/realtime_provider.py`：东方财富优先、腾讯和新浪兜底的实时行情、竞价与五档盘口采集。
+- `src/stock_auto/auction_history.py`：竞价成交量历史归档与竞昨量比计算。
 - `src/stock_auto/context.py`：竞价、分时、资金流、板块数据协议。
 - `docs/data-providers.md`：供应商接入与数据质量要求。
 - `src/stock_auto/backtest.py`：无未来函数的日频回测引擎。
@@ -100,7 +106,11 @@ print(signal.eligible, signal.score, signal.reasons, signal.warnings)
 - `tests/`：单元测试。
 - `docs/strategy.md`：策略细节、数据契约与边界说明。
 
-## 项目阶段\n\n完整阶段交付与生产化边界见 [docs/roadmap.md](docs/roadmap.md)。\n\n## 重要边界
+## 项目阶段
+
+完整阶段交付与生产化边界见 [docs/roadmap.md](docs/roadmap.md)。
+
+## 重要边界
 
 当前版本已接入东方财富实时行情、腾讯报价/盘口兜底和新浪报价备用，并保留 AKShare/Tushare 日线适配器；不含新闻爬虫、券商交易接口或自动下单。数据接入和回测假设详见 `docs/data-backtest.md`。当前回测是研究级日频框架，交易日历、个股特殊涨跌幅规则、复权处理和费用参数仍需按数据源与实际交易规则校准。
 
