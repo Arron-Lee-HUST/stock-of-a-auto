@@ -63,6 +63,48 @@ class JsonlAlertSink:
             stream.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
 
 
+
+class SqliteAlertSink:
+    """Persistent idempotent alert outbox backed by SQLite.
+
+    The fingerprint excludes checked_at, so repeated polling of an unchanged
+    event is suppressed across process restarts as well as within one process.
+    """
+    def __init__(self, path: str | Path) -> None:
+        import sqlite3
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with sqlite3.connect(self.path) as db:
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS alerts (
+                    fingerprint TEXT PRIMARY KEY,
+                    trade_date TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    payload_json TEXT NOT NULL
+                )
+            """)
+
+    def publish(self, payload: dict) -> None:
+        import hashlib
+        import sqlite3
+        from datetime import datetime, timezone
+
+        stable = {
+            "trade_date": payload.get("trade_date"),
+            "market_risk": payload.get("market_risk"),
+            "event": payload.get("event"),
+        }
+        canonical = json.dumps(stable, sort_keys=True, ensure_ascii=False, default=str)
+        fingerprint = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        with sqlite3.connect(self.path, timeout=10) as db:
+            db.execute(
+                "INSERT OR IGNORE INTO alerts(fingerprint, trade_date, created_at, payload_json) VALUES (?, ?, ?, ?)",
+                (fingerprint, str(payload.get("trade_date", "")),
+                 datetime.now(timezone.utc).isoformat(),
+                 json.dumps(payload, ensure_ascii=False, default=str)),
+            )
+
+
 MonitorCallback = Callable[[str, str], MonitorReport]
 
 
