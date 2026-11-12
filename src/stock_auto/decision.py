@@ -14,13 +14,15 @@ def evaluate_entry(snapshot: MarketSnapshot, signal: Signal, config: StrategyCon
         return Decision("wait", ["竞价涨幅超出允许区间"], [f"竞价涨幅={snapshot.auction_pct:.2f}%"])
     if snapshot.auction_volume_ratio < cfg.min_auction_volume_ratio:
         return Decision("wait", ["竞价成交量不足"], [])
+    if snapshot.order_book_imbalance is None or snapshot.bid_depth_shares is None or snapshot.ask_depth_shares is None:
+        return Decision("wait", ["五档盘口数据不完整，暂不生成入场信号"], ["缺少买卖盘深度或盘口失衡指标"])
     if snapshot.price is None or snapshot.vwap is None:
         return Decision("wait", ["盘中价格或分时均价线数据缺失"], ["不以缺失数据推断买点"])
     if cfg.require_price_above_vwap and snapshot.price <= snapshot.vwap:
         return Decision("wait", ["价格未运行在分时均价线上方"], [])
     if snapshot.intraday_volume_ratio is not None and snapshot.intraday_volume_ratio < 1:
         return Decision("wait", ["缺少放量确认"], ["盘中量能偏弱，等待量价重新配合"])
-    reasons = ["竞价涨幅与竞价量能符合要求", "盘中价格位于分时均价线上方"]
+    reasons = ["竞价涨幅与竞价量能符合要求", "五档盘口数据完整", "盘中价格位于分时均价线上方"]
     warnings = ["盘中量比缺失，入场信号置信度降低"] if snapshot.intraday_volume_ratio is None else []
     return Decision("buy", reasons, warnings)
 
