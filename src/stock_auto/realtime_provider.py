@@ -63,8 +63,12 @@ class EastmoneyTencentRealtimeProvider:
         clock: Callable[[], datetime] | None = None,
         sleeper: Callable[[float], None] = time.sleep,
         auction_db_path: str = "runtime/auction-history.sqlite3",
+        max_quote_age_seconds: float = 120.0,
     ) -> None:
         self.transport = transport or self._http_json
+        if max_quote_age_seconds <= 0:
+            raise ValueError("max_quote_age_seconds must be positive")
+        self.max_quote_age_seconds = max_quote_age_seconds
         self.timeout_seconds = timeout_seconds
         self.min_interval_seconds = min_interval_seconds
         self.clock = clock or (lambda: datetime.now().astimezone())
@@ -120,14 +124,30 @@ class EastmoneyTencentRealtimeProvider:
         except Exception:
             LOG.exception("Eastmoney batch quote failed; falling back to Tencent/Sina")
 
-        missing = [s for s in normalized if s not in output]
+        missing = [s for s in normalized if s not in output or not self._source_is_fresh(output[s].get("source_timestamp"))]
         for symbol in missing:
             quote = self._get_tencent_quote(symbol)
-            if quote is None:
+            if quote is None or not self._source_is_fresh(quote.get("source_timestamp")):
                 quote = self._get_sina_quote(symbol)
-            if quote is not None:
+            if quote is not None and self._source_is_fresh(quote.get("source_timestamp")):
                 output[symbol] = quote
+            else:
+                output.pop(symbol, None)
         return [output[s] for s in normalized if s in output]
+
+
+    def _source_is_fresh(self, value: str | None) -> bool:
+        if not value:
+            return False
+        try:
+            stamp = datetime.fromisoformat(value)
+            now = self.clock()
+            if now.tzinfo is None:
+                now = now.astimezone()
+            age = (now - stamp).total_seconds()
+            return -5 <= age <= self.max_quote_age_seconds
+        except (TypeError, ValueError):
+            return False
 
     def get_order_books(self, symbols: Iterable[str]) -> dict[str, dict[str, Any]]:
         result: dict[str, dict[str, Any]] = {}
