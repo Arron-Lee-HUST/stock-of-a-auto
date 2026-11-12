@@ -97,6 +97,8 @@ def main(argv=None) -> int:
     serve_ak.add_argument("--poll-interval", type=float, default=30.0)
     serve_ak.add_argument("--alerts-db", default="runtime/alerts.sqlite3")
     serve_ak.add_argument("--health", default="runtime/health.json")
+    serve_ak.add_argument("--log-file", default="runtime/service.log")
+    serve_ak.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
 
     paper = commands.add_parser("paper-replay", help="replay pre-approved paper orders against daily bars")
     paper.add_argument("--daily-csv", required=True)
@@ -138,7 +140,9 @@ def main(argv=None) -> int:
         return 0
 
     if args.command == "serve-akshare":
-        from datetime import date, timedelta
+        import logging
+        import signal
+        from logging.handlers import RotatingFileHandler
         from .akshare_provider import AkshareMarketDataProvider
         from .service import MonitorService, TradingCalendar, SqliteAlertSink
         from .monitor import MarketMonitor
@@ -197,9 +201,18 @@ def main(argv=None) -> int:
             market = MarketSnapshot(symbol="market", trade_date=trade_date)
             return monitor.evaluate(trade_date, checked_at, snapshots, signals, positions, market)
 
+        log_path = Path(args.log_file)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        logging.basicConfig(level=getattr(logging, args.log_level),
+                            handlers=[RotatingFileHandler(log_path, maxBytes=10_000_000,
+                                                          backupCount=5, encoding="utf-8"),
+                                      logging.StreamHandler()],
+                            format="%(asctime)s %(levelname)s %(name)s %(message)s")
         service = MonitorService(calendar, monitor_cycle, SqliteAlertSink(args.alerts_db),
                                  args.health, interval_seconds=args.poll_interval,
                                  max_backoff_seconds=max(60.0, args.poll_interval))
+        signal.signal(signal.SIGINT, lambda *_: service.stop())
+        signal.signal(signal.SIGTERM, lambda *_: service.stop())
         print("Starting read-only AKShare monitor. Auction/VWAP are unavailable; new entries remain blocked.")
         service.run_forever()
         return 0
