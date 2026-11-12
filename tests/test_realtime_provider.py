@@ -50,6 +50,24 @@ class RealtimeProviderTests(unittest.TestCase):
             self.assertAlmostEqual(book["book_imbalance"], -1 / 7)
 
 
+
+    def test_market_stats_uses_limit_pools_and_streak(self):
+        def transport(url, headers, timeout):
+            if "getTopicZTPool" in url:
+                return {"data": {"pool": [{"lbc": 2}, {"lbc": "4"}, {"lbc": 1}]}}
+            if "getTopicDTPool" in url:
+                return {"data": {"pool": [{"c": "000001"}]}}
+            raise AssertionError(url)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            provider = EastmoneyTencentRealtimeProvider(
+                transport=transport, min_interval_seconds=0,
+                auction_db_path=str(Path(tmp) / "auction.sqlite3"))
+            stats = provider.get_market_stats("2026-11-12")
+            self.assertEqual(stats["market_limit_up_count"], 3)
+            self.assertEqual(stats["market_limit_down_count"], 1)
+            self.assertEqual(stats["market_max_streak"], 4)
+
     def test_tencent_is_used_when_eastmoney_quote_has_no_valid_source_time(self):
         fields = [""] * 38
         fields[1], fields[2], fields[3] = "浦发银行", "600000", "10.5"
