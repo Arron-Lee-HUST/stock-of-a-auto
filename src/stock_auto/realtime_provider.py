@@ -288,10 +288,12 @@ class EastmoneyTencentRealtimeProvider:
             up = self._get("https://push2ex.eastmoney.com/getTopicZTPool", params)
             down = self._get("https://push2ex.eastmoney.com/getTopicDTPool", params)
             up_data, down_data = up.get("data"), down.get("data")
-            if up_data is None or down_data is None:
+            if (not isinstance(up_data, dict) or not isinstance(down_data, dict)
+                    or "pool" not in up_data or "pool" not in down_data):
                 return None
-            up_pool = up_data.get("pool") or []
-            down_pool = down_data.get("pool") or []
+            up_pool, down_pool = up_data.get("pool"), down_data.get("pool")
+            if not isinstance(up_pool, list) or not isinstance(down_pool, list):
+                return None
             streaks = [_number(item.get("lbc")) for item in up_pool]
             valid_streaks = [int(value) for value in streaks if value is not None and value >= 0]
             advancers = decliners = flat = None
