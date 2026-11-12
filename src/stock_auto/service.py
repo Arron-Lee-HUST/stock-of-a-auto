@@ -177,7 +177,7 @@ class MonitorService:
     owns session gating, retries, event de-duplication, health snapshots and shutdown.
     """
 
-    WINDOWS = ((time(9, 20), time(9, 25)), (time(9, 30), time(11, 30)),
+    WINDOWS = ((time(9, 20), time(9, 27)), (time(9, 30), time(11, 30)),
                (time(13, 0), time(15, 0)))
 
     def __init__(
