@@ -121,3 +121,12 @@ stock-auto refresh-akshare --universe-csv data/universe.csv --daily-csv data/dai
 ```
 
 建议在每个交易日收盘后运行；它只更新本地历史日线，不会自动更新交易日历。
+
+
+更新交易日历（免费 AKShare/Sina）：
+
+```bash
+stock-auto sync-calendar-akshare --output data/trading-calendar.csv
+```
+
+此接口提供已公布的历史交易日列表；上线前仍须确认文件包含当天，未包含时监控会安全停止。
