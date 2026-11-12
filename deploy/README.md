@@ -53,3 +53,6 @@ Docker 可选安装 AKShare：`docker build --build-arg INSTALL_AKSHARE=1 -t sto
 ## systemd 守护进程
 
 仓库提供 `deploy/stock-auto.service.example`。部署前创建 stockauto 用户/组，准备数据目录、`/var/lib/stock-auto` 和 `/var/log/stock-auto`，并修改 unit 中的安装路径、开始日期和数据文件路径。服务支持 SIGTERM 优雅退出、自动重启和日志轮转（10 MB × 5 个文件）。使用前先以 stockauto 用户执行 `stock-auto --help` 与一次 `serve-akshare` 配置检查；不要在没有有效交易日历和行情缓存时启动。
+
+
+可选 Webhook 告警：设置环境变量 `STOCK_AUTO_ALERT_WEBHOOK` 为接收 JSON POST 的 HTTPS 地址。服务会先将事件写入 SQLite outbox，再发送；失败会记录错误并在后续轮询重试，成功事件不会因进程重启重复发送。不要把含密钥的 webhook URL 提交到仓库或日志。此接口是通用 JSON webhook，不内置企业微信/钉钉的签名算法或消息模板，使用前需确认目标端接受本项目 JSON 结构。
