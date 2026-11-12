@@ -13,6 +13,7 @@ dependencies = []
 stock-auto = "stock_auto.cli:main"
 
 [project.optional-dependencies]
+akshare = ["akshare>=1.16"]
 tushare = ["tushare>=1.4"]
 
 [tool.setuptools.packages.find]
