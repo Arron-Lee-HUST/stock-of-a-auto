@@ -110,6 +110,33 @@ class ServiceTests(unittest.TestCase):
                 delivered = db.execute("SELECT delivered_at FROM alerts").fetchone()[0]
             self.assertIsNotNone(delivered)
 
+
+    def test_webhook_pending_alert_is_retried_by_flush(self):
+        from unittest.mock import patch
+        import sqlite3
+
+        class Response:
+            status = 204
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "outbox.sqlite3"
+            sink = SqliteAlertSink(path, "https://example.invalid/hook")
+            payload = {"trade_date": "2026-11-11", "market_risk": "cautious",
+                       "event": {"symbol": "sh600000", "phase": "auction", "action": "wait"}}
+            with patch("urllib.request.urlopen", side_effect=[RuntimeError("temporary outage"), Response()]) as send:
+                with self.assertRaises(RuntimeError):
+                    sink.publish(payload)
+                sink.flush()
+                self.assertEqual(send.call_count, 2)
+            with sqlite3.connect(path) as db:
+                delivered, error = db.execute("SELECT delivered_at, last_error FROM alerts").fetchone()
+            self.assertIsNotNone(delivered)
+            self.assertIsNone(error)
+
     def test_weekend_or_holiday_does_not_call_monitor(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
