@@ -26,6 +26,32 @@ def _symbols(path: str) -> list[str]:
         return sorted({row["symbol"].strip() for row in rows if row.get("symbol", "").strip()})
 
 
+
+def _upsert_daily_bars(path: str | Path, bars) -> int:
+    target = Path(path)
+    records = {}
+    if target.exists():
+        with target.open("r", encoding="utf-8-sig", newline="") as stream:
+            for row in csv.DictReader(stream):
+                records[(row["symbol"], row["trade_date"])] = row
+    for bar in bars:
+        records[(bar.symbol, bar.trade_date)] = {
+            "symbol": bar.symbol, "trade_date": bar.trade_date, "open": bar.open,
+            "high": bar.high, "low": bar.low, "close": bar.close, "volume": bar.volume,
+            "amount": bar.amount, "prev_close": bar.prev_close,
+            "is_suspended": bar.is_suspended, "limit_pct": bar.limit_pct,
+        }
+    target.parent.mkdir(parents=True, exist_ok=True)
+    fields = ["symbol", "trade_date", "open", "high", "low", "close", "volume",
+              "amount", "prev_close", "is_suspended", "limit_pct"]
+    with target.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(stream, fieldnames=fields)
+        writer.writeheader()
+        for key in sorted(records):
+            writer.writerow(records[key])
+    return len(bars)
+
+
 def _context(args, date):
     if not any((args.auction_csv, args.intraday_csv, args.flow_csv, args.sector_csv)):
         return None
@@ -84,6 +110,13 @@ def main(argv=None) -> int:
     sync_ak.add_argument("--end-date", required=True)
     sync_ak.add_argument("--output", default="data/akshare-daily.csv")
 
+    refresh_ak = commands.add_parser("refresh-akshare", help="incrementally refresh and upsert cached daily bars")
+    refresh_ak.add_argument("--universe-csv", required=True)
+    refresh_ak.add_argument("--daily-csv", default="data/akshare-daily.csv")
+    refresh_ak.add_argument("--start-date")
+    refresh_ak.add_argument("--end-date")
+    refresh_ak.add_argument("--lookback-days", type=int, default=10)
+
     spot_ak = commands.add_parser("spot-akshare", help="export an AKShare latest spot snapshot")
     spot_ak.add_argument("--universe-csv")
     spot_ak.add_argument("--output", default="runtime/akshare-spot.csv")
@@ -116,17 +149,28 @@ def main(argv=None) -> int:
         from .akshare_provider import AkshareMarketDataProvider
         provider = AkshareMarketDataProvider()
         bars = provider.get_bars(_symbols(args.universe_csv), args.start_date, args.end_date)
-        output = Path(args.output)
-        output.parent.mkdir(parents=True, exist_ok=True)
-        with output.open("w", encoding="utf-8", newline="") as stream:
-            writer = csv.writer(stream)
-            writer.writerow(["symbol", "trade_date", "open", "high", "low", "close",
-                             "volume", "amount", "prev_close", "is_suspended", "limit_pct"])
-            for bar in bars:
-                writer.writerow([bar.symbol, bar.trade_date, bar.open, bar.high, bar.low,
-                                 bar.close, bar.volume, bar.amount, bar.prev_close,
-                                 bar.is_suspended, bar.limit_pct])
-        print(f"AKShare daily sync complete: {len(bars)} rows -> {output}")
+        count = _upsert_daily_bars(args.output, bars)
+        print(f"AKShare daily sync complete: {count} fetched rows merged -> {args.output}")
+        return 0
+
+    if args.command == "refresh-akshare":
+        from datetime import date, timedelta
+        from .akshare_provider import AkshareMarketDataProvider
+        symbols = _symbols(args.universe_csv)
+        target = Path(args.daily_csv)
+        if args.start_date:
+            start_date = args.start_date
+        elif target.exists():
+            with target.open("r", encoding="utf-8-sig", newline="") as stream:
+                cached = list(csv.DictReader(stream))
+            dates = [row["trade_date"] for row in cached if row.get("trade_date")]
+            start_date = (date.fromisoformat(min(dates)) - timedelta(days=args.lookback_days)).isoformat() if dates else "2020-01-01"
+        else:
+            start_date = "2020-01-01"
+        end_date = args.end_date or date.today().isoformat()
+        bars = AkshareMarketDataProvider().get_bars(symbols, start_date, end_date)
+        count = _upsert_daily_bars(target, bars)
+        print(f"AKShare incremental refresh complete: {count} fetched rows merged -> {target}")
         return 0
 
     if args.command == "spot-akshare":
