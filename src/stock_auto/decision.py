@@ -8,7 +8,7 @@ def evaluate_entry(snapshot: MarketSnapshot, signal: Signal, config: StrategyCon
     cfg = config or StrategyConfig()
     if not signal.eligible:
         return Decision("wait", ["选股阶段未通过三驱评分或硬性过滤"], signal.warnings.copy())
-    if snapshot.auction_pct is None or snapshot.auction_volume_ratio is None:
+    if snapshot.auction_pct is None or snapshot.auction_volume_ratio is None or not snapshot.auction_source_timestamp:
         return Decision("wait", ["竞价数据不完整，暂不生成入场信号"], ["缺少竞价涨幅或竞价量比"])
     if not cfg.auction_min_pct <= snapshot.auction_pct <= cfg.auction_max_pct:
         return Decision("wait", ["竞价涨幅超出允许区间"], [f"竞价涨幅={snapshot.auction_pct:.2f}%"])
@@ -16,7 +16,7 @@ def evaluate_entry(snapshot: MarketSnapshot, signal: Signal, config: StrategyCon
         return Decision("wait", ["竞价成交量不足"], [])
     if not snapshot.quote_source_timestamp or not snapshot.order_book_source_timestamp:
         return Decision("wait", ["行情或盘口缺少上游时间戳，无法验证数据新鲜度"], ["不使用仅有本地采集时间的数据触发入场"])
-    if snapshot.order_book_imbalance is None or snapshot.bid_depth_shares is None or snapshot.ask_depth_shares is None:
+    if snapshot.order_book_complete is not True or snapshot.order_book_imbalance is None or snapshot.bid_depth_shares is None or snapshot.ask_depth_shares is None:
         return Decision("wait", ["五档盘口数据不完整，暂不生成入场信号"], ["缺少买卖盘深度或盘口失衡指标"])
     if snapshot.price is None or snapshot.vwap is None:
         return Decision("wait", ["盘中价格或分时均价线数据缺失"], ["不以缺失数据推断买点"])
