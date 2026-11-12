@@ -65,7 +65,7 @@ class EastmoneyTencentRealtimeProvider:
         self,
         transport: Callable[[str, dict[str, str], float], Any] | None = None,
         timeout_seconds: float = 6.0,
-        min_interval_seconds: float = 0.18,
+        min_interval_seconds: float = 0.25,
         clock: Callable[[], datetime] | None = None,
         sleeper: Callable[[float], None] = time.sleep,
         auction_db_path: str = "runtime/auction-history.sqlite3",
