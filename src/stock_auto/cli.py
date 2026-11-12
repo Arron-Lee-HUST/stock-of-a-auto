@@ -203,7 +203,6 @@ def main(argv=None) -> int:
         from .service import MonitorService, TradingCalendar, SqliteAlertSink
         from .monitor import MarketMonitor
         from .models import MarketSnapshot, TradePosition
-        from .scanner import CandidateScanner, build_snapshot
 
         symbols = _symbols(args.universe_csv)
         calendar = TradingCalendar.from_csv(args.calendar_csv)
