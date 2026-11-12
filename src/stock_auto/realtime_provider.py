@@ -255,9 +255,8 @@ class EastmoneyTencentRealtimeProvider:
 
     def _get_sina_quote(self, symbol: str) -> dict[str, Any] | None:
         try:
-            payload = self.transport("https://hq.sinajs.cn/list=" + symbol,
-                {"Referer": "https://finance.sina.com.cn/", "User-Agent": HEADERS["User-Agent"]},
-                self.timeout_seconds)
+            payload = self._get("https://hq.sinajs.cn", {"list": symbol},
+                {"Referer": "https://finance.sina.com.cn/", "User-Agent": HEADERS["User-Agent"]})
             if isinstance(payload, dict):
                 return None
             raw = payload.decode("gbk", errors="replace") if isinstance(payload, bytes) else str(payload)
