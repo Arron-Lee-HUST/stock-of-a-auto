@@ -330,6 +330,7 @@ def main(argv=None) -> int:
                     snapshot.fund_flow_big_net = flow.get("big_net")
                     snapshot.fund_flow_super_big_net = flow.get("super_big_net")
                     snapshot.fund_flow_source = flow.get("source")
+                    snapshot.fund_flow_kind = flow.get("flow_kind")
                     snapshot.fund_flow_source_timestamp = flow.get("source_timestamp")
                 if auction:
                     snapshot.auction_pct = ((auction["auction_price"] / snapshot.prev_close - 1) * 100
