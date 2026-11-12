@@ -45,7 +45,7 @@ class RealtimeProviderTests(unittest.TestCase):
             self.assertEqual(book["bids"][0]["price"], 10.0)
             self.assertEqual(book["bids"][0]["volume_shares"], 10000)
             self.assertEqual(book["asks"][0]["volume_shares"], 15000)
-            self.assertAlmostEqual(book["book_imbalance"], -0.2)
+            self.assertAlmostEqual(book["book_imbalance"], -1 / 7)
 
     def test_eastmoney_batch_quote_is_primary(self):
         def transport(url, headers, timeout):
