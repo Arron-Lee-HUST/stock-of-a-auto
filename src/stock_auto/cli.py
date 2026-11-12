@@ -113,7 +113,7 @@ def main(argv=None) -> int:
 
     args = parser.parse_args(argv)
     if args.command == "sync-akshare":
-        from .realtime_provider import EastmoneyTencentRealtimeProvider
+        from .akshare_provider import AkshareMarketDataProvider
         provider = AkshareMarketDataProvider()
         bars = provider.get_bars(_symbols(args.universe_csv), args.start_date, args.end_date)
         output = Path(args.output)
@@ -130,7 +130,7 @@ def main(argv=None) -> int:
         return 0
 
     if args.command == "spot-akshare":
-        from .realtime_provider import EastmoneyTencentRealtimeProvider
+        from .akshare_provider import AkshareMarketDataProvider
         symbols = _symbols(args.universe_csv) if args.universe_csv else None
         quotes = AkshareMarketDataProvider().get_spot_quotes(symbols)
         output = Path(args.output)
