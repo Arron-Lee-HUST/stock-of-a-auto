@@ -25,6 +25,12 @@ class MarketSnapshot:
     avg_volume_5: float | None = None
     amount: float | None = None
     main_net_inflow: float | None = None
+    fund_flow_small_net: float | None = None
+    fund_flow_mid_net: float | None = None
+    fund_flow_big_net: float | None = None
+    fund_flow_super_big_net: float | None = None
+    fund_flow_source: str | None = None
+    fund_flow_source_timestamp: str | None = None
     amplitude: float | None = None
     recent_limit_up: bool | None = None
     prior_high: float | None = None
