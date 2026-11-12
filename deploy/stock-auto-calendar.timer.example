@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh A-share trading calendar before market open
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 08:00:00 Asia/Shanghai
+Persistent=true
+RandomizedDelaySec=60
+Unit=stock-auto-calendar.service
+
+[Install]
+WantedBy=timers.target
