@@ -196,7 +196,7 @@ class EastmoneyTencentRealtimeProvider:
 
     def _get_tencent_quote(self, symbol: str) -> dict[str, Any] | None:
         try:
-            payload = self._get("https://qt.gtimg.cn/q=" + symbol, {}, {"Referer": "https://gu.qq.com/",
+            payload = self._get("https://qt.gtimg.cn", {"q": symbol}, {"Referer": "https://gu.qq.com/",
                 "User-Agent": HEADERS["User-Agent"]})
             if isinstance(payload, dict):
                 return None
