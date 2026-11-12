@@ -197,9 +197,50 @@ class EastmoneyTencentRealtimeProvider:
                     }
             except Exception:
                 LOG.exception("Eastmoney order book failed for %s", symbol)
+            existing = result.get(symbol)
+            if not existing or not existing.get("complete") or not self._source_is_fresh(existing.get("source_timestamp")):
+                fallback = self._get_tencent_order_book(symbol)
+                if fallback and fallback.get("complete") and self._source_is_fresh(fallback.get("source_timestamp")):
+                    result[symbol] = fallback
         return result
 
-
+    def _get_tencent_order_book(self, symbol: str) -> dict[str, Any] | None:
+        try:
+            payload = self._get("https://qt.gtimg.cn", {"q": symbol}, {
+                "Referer": "https://gu.qq.com/", "User-Agent": HEADERS["User-Agent"]})
+            if isinstance(payload, dict):
+                return None
+            raw = payload.decode("gbk", errors="replace") if isinstance(payload, bytes) else str(payload)
+            fields = raw.split('="', 1)[-1].strip().strip('";').split("~")
+            if len(fields) < 31:
+                return None
+            bids, asks = [], []
+            for level in range(5):
+                price, volume = _number(fields[9 + level * 2]), _number(fields[10 + level * 2])
+                if _valid_price(price) and volume is not None:
+                    bids.append({"price": price, "volume_shares": volume * 100})
+            for level in range(5):
+                price, volume = _number(fields[19 + level * 2]), _number(fields[20 + level * 2])
+                if _valid_price(price) and volume is not None:
+                    asks.append({"price": price, "volume_shares": volume * 100})
+            bid_total = sum(item["volume_shares"] for item in bids)
+            ask_total = sum(item["volume_shares"] for item in asks)
+            return {
+                "symbol": symbol, "bids": bids, "asks": asks,
+                "bid_depth_shares": bid_total, "ask_depth_shares": ask_total,
+                "best_bid_price": bids[0]["price"] if bids else None,
+                "best_ask_price": asks[0]["price"] if asks else None,
+                "book_imbalance": ((bid_total - ask_total) / (bid_total + ask_total))
+                    if bid_total + ask_total else None,
+                "bid_levels": len(bids), "ask_levels": len(asks),
+                "complete": len(bids) == 5 and len(asks) == 5,
+                "captured_at": self.clock().isoformat(),
+                "source_timestamp": _parse_source_timestamp(fields[30]),
+                "source": "tencent.qt.gtimg.cn", "levels": 5,
+            }
+        except Exception:
+            LOG.exception("Tencent order-book fallback failed for %s", symbol)
+            return None
 
     def get_fund_flows(self, symbols: Iterable[str], trade_date: str) -> dict[str, dict[str, Any]]:
         """Read Eastmoney minute-level estimated order-size fund-flow aggregates."""
