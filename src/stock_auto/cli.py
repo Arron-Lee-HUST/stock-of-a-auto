@@ -128,7 +128,7 @@ def main(argv=None) -> int:
         return 0
 
     if args.command == "spot-akshare":
-        from .akshare_provider import AkshareMarketDataProvider
+        from .realtime_provider import EastmoneyTencentRealtimeProvider
         symbols = _symbols(args.universe_csv) if args.universe_csv else None
         quotes = AkshareMarketDataProvider().get_spot_quotes(symbols)
         output = Path(args.output)
@@ -228,8 +228,8 @@ def main(argv=None) -> int:
                     snapshot.auction_source_timestamp = auction.get("source_timestamp")
                 snapshots[symbol] = snapshot
 
-            # Missing market breadth forces cautious exposure. Missing auction/VWAP
-            # fields deliberately prevent any buy action from this spot-only adapter.
+            # Market breadth is still unavailable from this lightweight collector;
+            # missing auction, VWAP, or five-level book fields fail closed.
             market = MarketSnapshot(symbol="market", trade_date=trade_date)
             return monitor.evaluate(trade_date, checked_at, snapshots, signals, positions, market)
 
