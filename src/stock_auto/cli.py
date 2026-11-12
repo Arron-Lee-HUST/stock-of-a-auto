@@ -203,6 +203,8 @@ def main(argv=None) -> int:
         from .realtime_provider import EastmoneyTencentRealtimeProvider
         from .service import MonitorService, TradingCalendar, SqliteAlertSink
 
+        if args.max_candidates < 1 or args.max_data_age <= 0 or args.poll_interval <= 0:
+            raise ValueError("max-candidates, max-data-age and poll-interval must be positive")
         symbols = _symbols(args.universe_csv)
         calendar = TradingCalendar.from_csv(args.calendar_csv)
         daily = CsvMarketDataProvider(args.daily_csv)
