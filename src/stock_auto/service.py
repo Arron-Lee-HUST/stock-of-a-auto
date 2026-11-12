@@ -72,6 +72,11 @@ class SqliteAlertSink:
     """
     def __init__(self, path: str | Path, webhook_url: str | None = None, timeout_seconds: float = 8.0) -> None:
         import sqlite3
+        from urllib.parse import urlparse
+        if timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
+        if webhook_url and urlparse(webhook_url).scheme != "https":
+            raise ValueError("webhook_url must use HTTPS")
         self.path = Path(path)
         self.webhook_url = webhook_url
         self.timeout_seconds = timeout_seconds
