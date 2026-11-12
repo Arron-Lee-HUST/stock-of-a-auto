@@ -191,6 +191,35 @@ class EastmoneyTencentRealtimeProvider:
                 LOG.exception("Eastmoney order book failed for %s", symbol)
         return result
 
+
+    def get_market_stats(self, trade_date: str) -> dict[str, Any] | None:
+        """Fetch Eastmoney limit-up/down pools and highest consecutive-board count."""
+        date_key = trade_date.replace("-", "")
+        params = {"ut": "7eea3edcaed734bea9cbfc24409ed989", "dpt": "wz.ztzt",
+                  "Pageindex": "0", "pagesize": "10000", "sort": "fbt:asc",
+                  "date": date_key}
+        try:
+            up = self._get("https://push2ex.eastmoney.com/getTopicZTPool", params)
+            down = self._get("https://push2ex.eastmoney.com/getTopicDTPool", params)
+            up_data, down_data = up.get("data"), down.get("data")
+            if up_data is None or down_data is None:
+                return None
+            up_pool = up_data.get("pool") or []
+            down_pool = down_data.get("pool") or []
+            streaks = [_number(item.get("lbc")) for item in up_pool]
+            valid_streaks = [int(value) for value in streaks if value is not None and value >= 0]
+            return {
+                "trade_date": trade_date,
+                "market_limit_up_count": len(up_pool),
+                "market_limit_down_count": len(down_pool),
+                "market_max_streak": max(valid_streaks, default=0),
+                "captured_at": self.clock().isoformat(),
+                "source": "eastmoney.push2ex",
+            }
+        except Exception:
+            LOG.exception("Eastmoney market limit-pool statistics failed")
+            return None
+
     def get_auction_observations(self, symbols: Iterable[str], trade_date: str) -> dict[str, dict[str, Any]]:
         """Read the final 09:25 auction match from the Eastmoney 09:26 trend row.
 
