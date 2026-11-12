@@ -289,6 +289,12 @@ def main(argv=None) -> int:
                     snapshot.order_book_source = book.get("source")
                     snapshot.order_book_captured_at = book.get("captured_at")
                     snapshot.order_book_source_timestamp = book.get("source_timestamp")
+                industry = (quote.get("industry") if quote else None) or (book.get("industry") if book else None)
+                sector = (market_stats or {}).get("sector_by_name", {}).get(industry) if industry else None
+                if sector:
+                    snapshot.sector_rank = sector.get("rank")
+                    snapshot.sector_limit_up_count = sector.get("limit_up_count")
+                    snapshot.sector_leader_limit_up = sector.get("leader_limit_up")
                 if auction:
                     snapshot.auction_pct = ((auction["auction_price"] / snapshot.prev_close - 1) * 100
                                              if snapshot.prev_close else None)
