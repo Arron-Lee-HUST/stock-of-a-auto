@@ -105,3 +105,8 @@ stock-auto serve-live --daily-csv data/daily.csv --universe-csv data/universe.cs
 ```
 
 旧命令 `serve-akshare` 保留为兼容别名。AKShare 仍负责免费日线历史下载；实时监控不再使用 AKShare spot 作为竞价或盘口来源。
+
+
+### 市场情绪统计
+
+监控服务额外读取东方财富 `push2ex` 的 `getTopicZTPool` 与 `getTopicDTPool`，以涨停池/跌停池条目数形成市场涨跌停家数，并从涨停池 `lbc` 取最大连板数。接口返回 `data=null` 或请求失败时，市场情绪字段保持 None，风控层继续进入 cautious，不用 0 冒充正常市场状态。
