@@ -31,3 +31,20 @@ docker run --rm -v "$PWD/data:/app/data" -v "$PWD/reports:/app/reports" stock-of
 把扫描任务调度在交易日 15:10（收盘后），竞价监控服务应在 09:20–09:25 由独立实时数据进程调用 `MarketMonitor`。系统时区需显式设为 Asia/Shanghai，并使用交易日历过滤节假日。不要用普通 cron 的工作日表达式替代交易日历。
 
 本仓库不提供行情 Token、实时数据服务、云主机或真实券商连接。生产部署前需配置数据授权、密钥管理、日志轮转、告警和人工审批。
+
+
+## AKShare 免费数据源
+
+安装：`pip install -e ".[akshare]"`。
+
+日线缓存：`stock-auto sync-akshare --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2026-12-31 --output data/daily.csv`。
+
+Spot 快照：`stock-auto spot-akshare --universe-csv data/universe.csv --output runtime/spot.csv`。
+
+持续只读监控：`stock-auto serve-akshare --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --calendar-csv data/trading-calendar.csv --positions-csv data/positions.csv --poll-interval 30`。
+
+交易日历必须来自可信交易所/供应商数据并覆盖运行日期。服务使用 Asia/Shanghai 时区，按 09:20–09:25、09:30–11:30、13:00–15:00 轮询。告警通过 SQLite 持久化去重，health.json 记录运行状态。
+
+重要限制：AKShare spot 不是逐笔、盘口深度或专用集合竞价接口。服务不会推断竞价量比、VWAP 或市场宽度；缺少这些数据时强制谨慎模式并阻止新增买入。只读服务不会调用券商或提交订单。
+
+Docker 可选安装 AKShare：`docker build --build-arg INSTALL_AKSHARE=1 -t stock-of-a-auto:akshare .`
