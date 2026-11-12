@@ -202,8 +202,6 @@ def main(argv=None) -> int:
         from logging.handlers import RotatingFileHandler
         from .realtime_provider import EastmoneyTencentRealtimeProvider
         from .service import MonitorService, TradingCalendar, SqliteAlertSink
-        from .monitor import MarketMonitor
-        from .models import MarketSnapshot, TradePosition
 
         symbols = _symbols(args.universe_csv)
         calendar = TradingCalendar.from_csv(args.calendar_csv)
