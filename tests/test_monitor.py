@@ -21,7 +21,8 @@ class MonitorTests(unittest.TestCase):
                                   vwap=10.0, auction_pct=2, auction_volume_ratio=1.5,
                                   intraday_volume_ratio=1.2,
                                   quote_source_timestamp="2024-01-02T09:31:00+08:00",
-                                  order_book_source_timestamp="2024-01-02T09:31:00+08:00")
+                                  order_book_source_timestamp="2024-01-02T09:31:00+08:00",
+                                  auction_source_timestamp="2024-01-02T09:26:00+08:00")
         signal = Signal("sh600000", 80, 30, 25, 25, True)
         market = MarketSnapshot("market", market_limit_up_count=50,
                                 market_limit_down_count=2, market_max_streak=5)
