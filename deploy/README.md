@@ -84,3 +84,14 @@ stock-auto serve-live \
 - `runtime/alerts.sqlite3`：告警 outbox。
 
 免费公开接口无 SLA，建议先用小规模股票池连续跑至少 5 个交易日，统计源切换次数、数据缺失率、请求耗时和时间戳延迟。该服务保持只读，不会下单。
+
+
+## 每日历史行情增量刷新
+
+建议在每个交易日 15:10（Asia/Shanghai）执行：
+
+```bash
+stock-auto refresh-akshare --universe-csv data/universe.csv --daily-csv data/daily.csv --lookback-days 10
+```
+
+该命令读取每只股票本地最后交易日期，取全股票池最早的最后日期向前回看指定自然日数，下载后按 `(symbol, trade_date)` upsert，覆盖最近窗口内的修订数据并保留更早历史。当前不会自动更新交易日历；交易日历仍由部署方提供权威 CSV。
