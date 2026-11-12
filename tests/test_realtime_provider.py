@@ -101,7 +101,7 @@ class RealtimeProviderTests(unittest.TestCase):
                 "f12": "600000", "f13": "1", "f2": "10.5", "f3": "2.5",
                 "f5": "100", "f6": "105000", "f10": "1.8",
                 "f17": "10.2", "f18": "10.24", "f15": "10.6", "f16": "10.1",
-                "f86": "202611120930",
+                "f86": "2026-11-12 09:30:00",
             }]}}
 
         with tempfile.TemporaryDirectory() as tmp:
