@@ -141,6 +141,7 @@ def main(argv=None) -> int:
 
     if args.command == "serve-akshare":
         import logging
+        import os
         import signal
         from logging.handlers import RotatingFileHandler
         from .akshare_provider import AkshareMarketDataProvider
@@ -208,7 +209,7 @@ def main(argv=None) -> int:
                                                           backupCount=5, encoding="utf-8"),
                                       logging.StreamHandler()],
                             format="%(asctime)s %(levelname)s %(name)s %(message)s")
-        service = MonitorService(calendar, monitor_cycle, SqliteAlertSink(args.alerts_db),
+        service = MonitorService(calendar, monitor_cycle, SqliteAlertSink(args.alerts_db,\n                                 webhook_url=os.getenv("STOCK_AUTO_ALERT_WEBHOOK")),
                                  args.health, interval_seconds=args.poll_interval,
                                  max_backoff_seconds=max(60.0, args.poll_interval))
         signal.signal(signal.SIGINT, lambda *_: service.stop())
