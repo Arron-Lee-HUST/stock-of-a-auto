@@ -160,6 +160,30 @@ class RealtimeProviderTests(unittest.TestCase):
             self.assertEqual(quote["source"], "tencent")
             self.assertEqual(quote["source_timestamp"], "2026-11-12T09:30:00+08:00")
 
+
+    def test_sina_is_last_quote_fallback_and_uses_its_date_time_fields(self):
+        sina_fields = ["浦发银行", "10.2", "10.24", "10.5", "10.6", "10.1",
+                       "", "", "10000", "105000", "2026-11-12", "09:30:00"]
+
+        def transport(url, headers, timeout):
+            if "ulist.np/get" in url:
+                return {"data": {"diff": [{"f12": "600000", "f13": "1", "f2": "10.5"}]}}
+            if "qt.gtimg.cn" in url:
+                return b'v_sh600000="bad";'
+            if "hq.sinajs.cn" in url:
+                return ('var hq_str_sh600000="' + ",".join(sina_fields) + '";').encode("gbk")
+            raise AssertionError(url)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            provider = EastmoneyTencentRealtimeProvider(
+                transport=transport, min_interval_seconds=0,
+                clock=lambda: datetime(2026, 11, 12, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai")),
+                auction_db_path=str(Path(tmp) / "auction.sqlite3"))
+            quote = provider.get_quotes(["sh600000"])[0]
+            self.assertEqual(quote["source"], "sina")
+            self.assertEqual(quote["source_timestamp"], "2026-11-12T09:30:00+08:00")
+            self.assertEqual(quote["volume_shares"], 10000)
+
     def test_eastmoney_batch_quote_is_primary(self):
         def transport(url, headers, timeout):
             return {"data": {"diff": [{
