@@ -3,6 +3,7 @@
 from .backtest import BacktestConfig, BacktestEngine, BacktestResult, Trade
 from .data import CsvMarketDataProvider, DailyBar, MarketDataProvider
 from .providers import TushareMarketDataProvider
+from .akshare_provider import AkshareMarketDataProvider
 from .context import AuctionQuote, CapitalFlow, CsvPointInTimeContextProvider, IntradayQuote, PointInTimeContextProvider, SectorContext
 from .scanner import Candidate, CandidateScanner, ScanResult, build_snapshot
 from .strategy_backtest import ThreeDriveBacktest
@@ -21,7 +22,7 @@ from .scoring import score_snapshot
 
 __all__ = [
     "BacktestConfig", "BacktestEngine", "BacktestResult", "CsvMarketDataProvider",
-    "DailyBar", "MarketDataProvider", "TushareMarketDataProvider",
+    "DailyBar", "MarketDataProvider", "TushareMarketDataProvider", "AkshareMarketDataProvider",
     "AuctionQuote", "CapitalFlow", "CsvPointInTimeContextProvider", "IntradayQuote", "PointInTimeContextProvider", "SectorContext",
     "Candidate", "CandidateScanner", "ScanResult", "ThreeDriveBacktest", "build_snapshot",
     "MarketMonitor", "MonitorEvent", "MonitorReport", "MonitorService", "TradingCalendar", "JsonlAlertSink", "PortfolioRiskDecision",
