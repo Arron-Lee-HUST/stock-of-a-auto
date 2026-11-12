@@ -1,0 +1,24 @@
+[Unit]
+Description=Stock Auto read-only A-share monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=stockauto
+Group=stockauto
+WorkingDirectory=/opt/stock-of-a-auto
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-/etc/stock-auto/stock-auto.env
+ExecStart=/opt/stock-of-a-auto/.venv/bin/stock-auto serve-akshare --daily-csv /opt/stock-of-a-auto/data/daily.csv --universe-csv /opt/stock-of-a-auto/data/universe.csv --start-date 2024-01-01 --calendar-csv /opt/stock-of-a-auto/data/trading-calendar.csv --positions-csv /opt/stock-of-a-auto/data/positions.csv --poll-interval 30 --alerts-db /var/lib/stock-auto/alerts.sqlite3 --health /var/lib/stock-auto/health.json --log-file /var/log/stock-auto/service.log
+Restart=always
+RestartSec=10
+KillSignal=SIGTERM
+TimeoutStopSec=30
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/stock-auto /var/log/stock-auto
+
+[Install]
+WantedBy=multi-user.target
