@@ -73,8 +73,12 @@ class EastmoneyTencentRealtimeProvider:
         request = Request(url, headers=headers)
         with urlopen(request, timeout=timeout) as response:
             raw = response.read()
-        # Eastmoney JSON is UTF-8. Other sources are parsed separately.
-        return json.loads(raw.decode("utf-8", errors="replace"))
+        # Eastmoney JSON is UTF-8; Tencent/Sina quote endpoints return text.
+        decoded = raw.decode("utf-8", errors="replace")
+        try:
+            return json.loads(decoded)
+        except json.JSONDecodeError:
+            return raw
 
     def _get(self, base: str, params: dict[str, str], headers: dict[str, str] | None = None) -> Any:
         elapsed = time.monotonic() - self._last_request
