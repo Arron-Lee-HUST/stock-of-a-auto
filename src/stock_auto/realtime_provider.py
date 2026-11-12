@@ -4,6 +4,7 @@ import json
 import logging
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Any, Callable, Iterable
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -99,7 +100,7 @@ class EastmoneyTencentRealtimeProvider:
         try:
             payload = self._get(
                 "https://push2.eastmoney.com/api/qt/ulist.np/get",
-                {"fltt": "2", "invt": "2", "fields": "f2,f3,f4,f5,f6,f10,f12,f13,f14,f15,f16,f17,f18",
+                {"fltt": "2", "invt": "2", "fields": "f2,f3,f4,f5,f6,f10,f12,f13,f14,f15,f16,f17,f18,f86",
                  "secids": secids, "ut": UT},
             )
             rows = (payload.get("data") or {}).get("diff") or []
@@ -112,6 +113,7 @@ class EastmoneyTencentRealtimeProvider:
                 )
                 if quote:
                     quote["intraday_volume_ratio"] = _number(row.get("f10"))
+                    quote["source_timestamp"] = _parse_source_timestamp(row.get("f86"))
                     quote["vwap"] = (quote["amount_cny"] / quote["volume_shares"]
                                      if quote.get("amount_cny") and quote.get("volume_shares") else None)
                     output[symbol] = quote
@@ -159,7 +161,7 @@ class EastmoneyTencentRealtimeProvider:
                         "best_ask_price": asks[0]["price"] if asks else None,
                         "book_imbalance": ((bid_total - ask_total) / (bid_total + ask_total))
                             if bid_total + ask_total else None,
-                        "captured_at": self.clock().isoformat(), "source": "eastmoney.stock.get",
+                        "captured_at": self.clock().isoformat(), "source_timestamp": _parse_source_timestamp(data.get("f86")), "source": "eastmoney.stock.get",
                         "levels": 5,
                     }
             except Exception:
@@ -226,7 +228,7 @@ class EastmoneyTencentRealtimeProvider:
                                          fields[36] if len(fields) > 36 else None,
                                          fields[37] if len(fields) > 37 else None,
                                          "tencent", self.clock().isoformat(), volume_unit="hands",
-                                         amount_unit="10k")
+                                         amount_unit="10k", source_timestamp=_parse_source_timestamp((fields[30] + " " + fields[31]) if len(fields) > 31 else None))
         except Exception:
             LOG.exception("Tencent fallback quote failed for %s", symbol)
             return None
@@ -263,7 +265,7 @@ class EastmoneyTencentRealtimeProvider:
     def _normalize_quote(symbol: str, price: Any, pct: Any, open_price: Any,
                          prev_close: Any, high: Any, low: Any, volume: Any, amount: Any,
                          source: str, captured_at: str, volume_unit: str = "hands",
-                         amount_unit: str = "cny") -> dict[str, Any] | None:
+                         amount_unit: str = "cny", source_timestamp: str | None = None) -> dict[str, Any] | None:
         price_n = _number(price)
         if not _valid_price(price_n):
             return None
@@ -277,8 +279,20 @@ class EastmoneyTencentRealtimeProvider:
             "open": _number(open_price), "prev_close": _number(prev_close),
             "high": _number(high), "low": _number(low),
             "volume_shares": volume_n, "amount_cny": amount_n,
-            "captured_at": captured_at, "source": source,
+            "captured_at": captured_at, "source_timestamp": source_timestamp, "source": source,
             "vwap": (amount_n / volume_n if amount_n and volume_n else None),
             "intraday_volume_ratio": None,
             "auction_available": False, "order_book_available": False,
         }
+
+
+def _parse_source_timestamp(value: Any) -> str | None:
+    if value in (None, "", "-", "--"):
+        return None
+    raw = str(value).strip()
+    for fmt in ("%Y%m%d%H%M%S", "%Y%m%d%H%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+        try:
+            return datetime.strptime(raw, fmt).replace(tzinfo=ZoneInfo("Asia/Shanghai")).isoformat()
+        except ValueError:
+            continue
+    return None
