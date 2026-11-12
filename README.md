@@ -20,6 +20,158 @@
 
 策略参数集中在 `StrategyConfig`，行情输入统一使用 `MarketSnapshot`。所有百分比字段均使用百分数数值（例如 3.2 表示 3.2%）；未知字段使用 `None`，不允许用 0 冒充缺失值。
 
+## 从零启动项目（推荐流程）
+
+本节以 **Windows PowerShell** 为例，同时提供 macOS/Linux 命令。首次启动建议先跑通历史数据下载、数据校验和单次扫描，确认数据正常后再启动实时只读监控。
+
+### 1. 获取代码并创建 Python 环境
+
+要求：Python 3.11+、可访问互联网。项目核心依赖较少；本流程安装 AKShare，用于免费获取日线数据和交易日历。
+
+```bash
+git clone https://github.com/Arron-Lee-HUST/stock-of-a-auto.git
+cd stock-of-a-auto
+python -m venv .venv
+```
+
+激活虚拟环境：
+
+```powershell
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+```
+
+```bash
+# macOS / Linux
+source .venv/bin/activate
+```
+
+安装项目和 AKShare 可选依赖：
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -e ".[akshare]"
+```
+
+验证命令行入口和测试：
+
+```bash
+stock-auto --help
+python -m unittest discover -s tests -v
+```
+
+如果当前终端提示找不到 `stock-auto`，先确认虚拟环境已激活；也可以重新执行 `python -m pip install -e ".[akshare]"`。
+
+### 2. 准备股票池
+
+项目不会默认替你选择股票。创建 `data/universe.csv`，至少包含 `symbol` 列，代码使用带市场前缀的格式：
+
+```csv
+symbol
+sh600000
+sz000001
+sz300750
+sh688981
+```
+
+示例仅用于说明格式，请按自己的研究范围替换。股票池越大，首次日线下载耗时越长；实时监控也会对候选股和持仓逐只请求数据源，建议先用少量股票验证。
+
+### 3. 下载历史日线数据
+
+首次运行需要建立本地日线缓存。以下示例下载 2024-01-01 至指定日期的数据；将结束日期改为最近一个已完成的交易日：
+
+```bash
+stock-auto sync-akshare --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2026-11-11 --output data/daily.csv
+```
+
+后续每天收盘后增量更新：
+
+```bash
+stock-auto refresh-akshare --universe-csv data/universe.csv --daily-csv data/daily.csv --lookback-days 10
+```
+
+数据文件保存在本地 `data/` 目录（该目录已加入 .gitignore，不会提交到 Git）。
+
+### 4. 同步并核对交易日历
+
+```bash
+stock-auto sync-calendar-akshare --output data/trading-calendar.csv
+```
+
+生成后检查 `data/trading-calendar.csv` 是否包含你准备启动监控的**当天交易日**。可用 PowerShell 检查：
+
+```powershell
+Import-Csv data/trading-calendar.csv | Select-Object -Last 10
+```
+
+macOS/Linux 可执行：
+
+```bash
+tail data/trading-calendar.csv
+```
+
+注意：免费日历接口可能只返回已公布的历史交易日，未必提前包含未来交易日。若文件不包含运行当天，实时服务会按安全策略停止；不要为了启动而把周末或节假日随意添加为交易日，应先核对权威交易所日历。
+
+### 5. 先做数据校验和候选扫描
+
+数据校验：
+
+```bash
+stock-auto validate-data --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2026-11-11 --output reports/data-quality.json
+```
+
+收盘后扫描示例（`--trade-date` 必须是日线缓存中存在的交易日）：
+
+```bash
+stock-auto scan --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2026-11-11 --trade-date 2026-11-11 --output-dir reports
+```
+
+扫描和回测的输出默认写入 `reports/`。如果你只想先验证项目能运行，到这一步即可，不需要启动持续监控。
+
+### 6. 启动实时只读监控
+
+确认以下文件均已准备好后再启动：
+
+- `data/universe.csv`：股票池。
+- `data/daily.csv`：截至最近一个已完成交易日的历史日线。
+- `data/trading-calendar.csv`：包含监控当天的有效交易日历。
+- 可选：`data/positions.csv`：当前持仓；没有持仓文件时，启动命令中不要传 `--positions-csv`。
+
+启动命令：
+
+```bash
+stock-auto serve-live --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --calendar-csv data/trading-calendar.csv --poll-interval 30 --max-data-age 120 --max-candidates 25 --auction-db runtime/auction-history.sqlite3 --market-data-jsonl runtime/market-data.jsonl --health runtime/health.json --log-file runtime/service.log
+```
+
+如果有持仓文件，在命令末尾增加：
+
+```bash
+--positions-csv data/positions.csv
+```
+
+服务会在适用的交易时段持续轮询，默认每 30 秒采集一次；实时普通报价优先使用东方财富，按规则回退腾讯/新浪。竞价匹配数据仍以东方财富为准。按 `Ctrl+C` 可停止进程。服务不会连接券商，也不会自动下单。
+
+运行时主要文件：
+
+| 文件 | 用途 |
+|---|---|
+| `runtime/market-data.jsonl` | 行情快照、数据源、源时间戳和质量诊断 |
+| `runtime/auction-history.sqlite3` | 竞价样本和最终匹配量历史 |
+| `runtime/health.json` | 服务健康状态 |
+| `runtime/alerts.sqlite3` | 告警去重与持久化记录 |
+| `runtime/service.log` | 服务运行日志 |
+
+首次启动时竞昨量比没有前一交易日基准是正常情况。系统需要连续观察同一只股票至少两个交易日才能计算；缺少竞价量比、完整盘口或有效源时间戳时会阻止新增买入信号。实时监控建议先使用小股票池连续运行至少 5 个交易日，检查日志和数据质量后再扩大范围。
+
+### 7. 常见问题
+
+- **`stock-auto` 命令不存在**：确认已激活 `.venv`，然后重新执行 `python -m pip install -e ".[akshare]"`。
+- **提示缺少 AKShare**：执行 `python -m pip install -e ".[akshare]"`。
+- **提示没有历史日线**：检查 `data/universe.csv` 股票代码格式、网络连接和 `sync-akshare` 命令输出。
+- **提示交易日历不包含当天**：重新同步并核对交易所日历；不能用非交易日或未经确认的日期绕过检查。
+- **没有买入信号**：这可能是安全过滤的预期结果。竞价历史基准尚未积累、数据过期、盘口不完整或上游时间戳缺失都会导致只观察、不入场。
+- **免费行情接口不稳定**：公开接口没有 SLA，可能限流或调整字段。先降低股票池规模、保持默认轮询间隔，并检查 `runtime/service.log` 和 `runtime/market-data.jsonl`。
+
 ## 快速开始
 
 需要 Python 3.11 或更高版本。核心研究模块无强制第三方运行时依赖；免费 AKShare 数据源需额外安装 `pip install -e ".[akshare]"`。
