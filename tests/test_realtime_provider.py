@@ -32,6 +32,12 @@ class RealtimeProviderTests(unittest.TestCase):
             self.assertEqual(auction["indicative_price"], 10.1)
             self.assertEqual(auction["auction_volume_shares"], 100000)
             self.assertAlmostEqual(auction["auction_volume_ratio"], 2.0)
+            samples = history.observations("sh600000", "2026-11-12")
+            self.assertEqual(len(samples), 2)
+            self.assertEqual(samples[0]["logical_auction_time"], "09:15")
+            self.assertEqual(samples[-1]["logical_auction_time"], "09:25")
+            self.assertEqual(samples[-1]["matched_volume_shares"], 100000)
+            self.assertEqual(samples[-1]["matched_amount_cny"], 1060000)
 
 
     def test_live_auction_indicative_price_is_available_before_final_volume(self):
