@@ -57,6 +57,8 @@ class RealtimeProviderTests(unittest.TestCase):
                 return {"data": {"pool": [{"lbc": 2}, {"lbc": "4"}, {"lbc": 1}]}}
             if "getTopicDTPool" in url:
                 return {"data": {"pool": [{"c": "000001"}]}}
+            if "getTopicZDFenBu" in url:
+                return {"data": {"fenbu": [{"1": 200}, {"-1": 100}, {"0": 5}]}}
             raise AssertionError(url)
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -67,6 +69,10 @@ class RealtimeProviderTests(unittest.TestCase):
             self.assertEqual(stats["market_limit_up_count"], 3)
             self.assertEqual(stats["market_limit_down_count"], 1)
             self.assertEqual(stats["market_max_streak"], 4)
+            self.assertEqual(stats["market_advancers"], 200)
+            self.assertEqual(stats["market_decliners"], 100)
+            self.assertEqual(stats["market_flat"], 5)
+            self.assertEqual(stats["market_breadth_ratio"], 2.0)
 
     def test_tencent_is_used_when_eastmoney_quote_has_no_valid_source_time(self):
         fields = [""] * 38
