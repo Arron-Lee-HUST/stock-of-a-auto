@@ -48,3 +48,8 @@ Spot 快照：`stock-auto spot-akshare --universe-csv data/universe.csv --output
 重要限制：AKShare spot 不是逐笔、盘口深度或专用集合竞价接口。服务不会推断竞价量比、VWAP 或市场宽度；缺少这些数据时强制谨慎模式并阻止新增买入。只读服务不会调用券商或提交订单。
 
 Docker 可选安装 AKShare：`docker build --build-arg INSTALL_AKSHARE=1 -t stock-of-a-auto:akshare .`
+
+
+## systemd 守护进程
+
+仓库提供 `deploy/stock-auto.service.example`。部署前创建 stockauto 用户/组，准备数据目录、`/var/lib/stock-auto` 和 `/var/log/stock-auto`，并修改 unit 中的安装路径、开始日期和数据文件路径。服务支持 SIGTERM 优雅退出、自动重启和日志轮转（10 MB × 5 个文件）。使用前先以 stockauto 用户执行 `stock-auto --help` 与一次 `serve-akshare` 配置检查；不要在没有有效交易日历和行情缓存时启动。
