@@ -14,10 +14,13 @@ pip install -e .
 
 - `stock-auto validate-data --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31`
 - `stock-auto scan --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31 --trade-date 2024-12-31 --flow-csv data/flow.csv --sector-csv data/sector.csv`
-- `stock-auto monitor --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31 --signal-date 2024-12-30 --trade-date 2024-12-31 --checked-at 09:23:00 --auction-csv data/auction.csv --intraday-csv data/intraday.csv --flow-csv data/flow.csv --sector-csv data/sector.csv --market-stats-json data/market-stats.json`\n- `stock-auto backtest --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31 --flow-csv data/flow.csv --sector-csv data/sector.csv`
+- `stock-auto monitor --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31 --signal-date 2024-12-30 --trade-date 2024-12-31 --checked-at 09:23:00 --auction-csv data/auction.csv --intraday-csv data/intraday.csv --flow-csv data/flow.csv --sector-csv data/sector.csv --market-stats-json data/market-stats.json`
+- `stock-auto backtest --daily-csv data/daily.csv --universe-csv data/universe.csv --start-date 2024-01-01 --end-date 2024-12-31 --flow-csv data/flow.csv --sector-csv data/sector.csv`
 - `stock-auto paper-replay --daily-csv data/daily.csv --orders-csv data/paper-orders.csv`
 
-Monitor 命令使用上一交易日 `--signal-date` 生成候选信号，使用当日 `--trade-date` 读取竞价/分时数据；市场宽度 JSON 需包含 `market_limit_up_count`、`market_limit_down_count`、`market_max_streak`。持仓 CSV 可选，字段为 `symbol,entry_price,quantity,entry_date,highest_price,cost_basis`。\n\nUniverse CSV 至少需要 `symbol` 列。日线 CSV 格式见 `docs/data-backtest.md`；上下文 CSV 字段见 `docs/data-providers.md`。模拟盘订单 CSV 字段：`order_id,symbol,side,quantity,submitted_date,trade_date`。
+Monitor 命令使用上一交易日 `--signal-date` 生成候选信号，使用当日 `--trade-date` 读取竞价/分时数据；市场宽度 JSON 需包含 `market_limit_up_count`、`market_limit_down_count`、`market_max_streak`。持仓 CSV 可选，字段为 `symbol,entry_price,quantity,entry_date,highest_price,cost_basis`。
+
+Universe CSV 至少需要 `symbol` 列。日线 CSV 格式见 `docs/data-backtest.md`；上下文 CSV 字段见 `docs/data-providers.md`。模拟盘订单 CSV 字段：`order_id,symbol,side,quantity,submitted_date,trade_date`。
 
 ## Docker
 
@@ -77,7 +80,9 @@ stock-auto serve-live \
 
 `serve-akshare` 仍作为兼容别名。实时源优先级是东方财富 → 腾讯 → 新浪；腾讯可兜底普通报价和五档盘口，新浪只兜底普通报价。竞价成交量额只认东方财富源，源时间戳超时或缺失时禁止新入场。09:25 最终集合竞价在东财分时数据的 09:26 源时间标签中落地，服务窗口延长至 09:27 用于接收该记录。
 
-竞昨量比按今日最终竞价匹配成交量除以最近一个已归档交易日竞价匹配成交量计算。第一次部署没有历史基准时该字段为空；必须连续运行至少两个交易日。竞价历史仅覆盖实际轮询的前 25 个候选和全部持仓；新进入观察集合的股票在没有上一交易日样本前，竞昨量比为空并阻止入场。\n\n运行过程中生成：
+竞昨量比按今日最终竞价匹配成交量除以最近一个已归档交易日竞价匹配成交量计算。第一次部署没有历史基准时该字段为空；必须连续运行至少两个交易日。竞价历史仅覆盖实际轮询的前 25 个候选和全部持仓；新进入观察集合的股票在没有上一交易日样本前，竞昨量比为空并阻止入场。
+
+运行过程中生成：
 - `runtime/auction-history.sqlite3`：每只股票每天最终竞价成交量；
 - `runtime/market-data.jsonl`：行情快照、五档盘口、竞价数据、数据源和时间戳；
 - `runtime/health.json`：监控健康状态；
