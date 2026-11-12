@@ -274,9 +274,13 @@ class EastmoneyTencentRealtimeProvider:
             volume_n *= 100
         if amount_n is not None and amount_unit == "10k":
             amount_n *= 10000
+        pct_n = _number(pct)
+        prev_close_n = _number(prev_close)
+        if pct_n is None and prev_close_n and prev_close_n > 0:
+            pct_n = (price_n / prev_close_n - 1) * 100
         return {
-            "symbol": symbol, "price": price_n, "pct_change": _number(pct),
-            "open": _number(open_price), "prev_close": _number(prev_close),
+            "symbol": symbol, "price": price_n, "pct_change": pct_n,
+            "open": _number(open_price), "prev_close": prev_close_n,
             "high": _number(high), "low": _number(low),
             "volume_shares": volume_n, "amount_cny": amount_n,
             "captured_at": captured_at, "source_timestamp": source_timestamp, "source": source,
