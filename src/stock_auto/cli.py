@@ -320,7 +320,7 @@ def main(argv=None) -> int:
                     snapshot.sector_rank = sector.get("rank")
                     snapshot.sector_limit_up_count = sector.get("limit_up_count")
                     snapshot.sector_leader_limit_up = sector.get("leader_limit_up")
-                if flow:
+                if flow and source_is_fresh(flow.get("source_timestamp")):
                     snapshot.main_net_inflow = flow.get("main_net_inflow")
                     snapshot.fund_flow_small_net = flow.get("small_net")
                     snapshot.fund_flow_mid_net = flow.get("mid_net")
