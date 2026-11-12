@@ -15,6 +15,19 @@ class MonitorTests(unittest.TestCase):
             {"sh600000": snapshot}, {"sh600000": signal}, {}, market)
         self.assertEqual(report.events[0].action, "watch")
 
+
+    def test_missing_order_book_blocks_intraday_entry(self):
+        snapshot = MarketSnapshot("sh600000", trade_date="2024-01-02", price=10.2,
+                                  vwap=10.0, auction_pct=2, auction_volume_ratio=1.5,
+                                  intraday_volume_ratio=1.2)
+        signal = Signal("sh600000", 80, 30, 25, 25, True)
+        market = MarketSnapshot("market", market_limit_up_count=50,
+                                market_limit_down_count=2, market_max_streak=5)
+        report = MarketMonitor().evaluate("2024-01-02", "09:31:00",
+            {"sh600000": snapshot}, {"sh600000": signal}, {}, market)
+        self.assertEqual(report.events[0].action, "wait")
+        self.assertIn("五档盘口数据不完整", report.events[0].reasons[0])
+
     def test_stale_snapshot_is_skipped(self):
         snapshot = MarketSnapshot("sh600000", trade_date="2024-01-01")
         market = MarketSnapshot("market", market_limit_up_count=50,
