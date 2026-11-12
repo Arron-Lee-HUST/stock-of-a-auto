@@ -115,3 +115,5 @@ stock-auto serve-live --daily-csv data/daily.csv --universe-csv data/universe.cs
 ### 市场广度与行业热度
 
 `getTopicZDFenBu` 返回的涨跌幅分布用于归纳上涨家数、下跌家数、平盘家数和上涨/下跌比。行业热度来自东方财富行业板块 `clist/get` 排名，个股行业名由实时行情字段 f100 关联；涨停池的 `hybk` 用于统计行业涨停家数，板块领涨股代码与涨停池交叉判断龙头是否涨停。若行业名或领涨股代码无法匹配，相关字段保持 None，不猜测关联。
+
+实时监控默认只对按评分排序的前 50 个候选股及全部持仓请求逐股竞价/五档盘口，避免对免费上游接口发起数千次并发/连续请求。可通过 `--max-candidates` 调整，逐股请求仍受 `--source-min-interval` 限频。
