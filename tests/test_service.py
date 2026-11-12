@@ -84,6 +84,32 @@ class ServiceTests(unittest.TestCase):
                 count = db.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
             self.assertEqual(count, 1)
 
+
+    def test_webhook_delivery_is_persistent_and_not_repeated(self):
+        from unittest.mock import patch
+        import sqlite3
+
+        class Response:
+            status = 200
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "outbox.sqlite3"
+            payload = {"trade_date": "2026-11-11", "checked_at": "09:23:00",
+                       "market_risk": "cautious",
+                       "event": {"symbol": "sh600000", "phase": "auction", "action": "wait"}}
+            with patch("urllib.request.urlopen", return_value=Response()) as send:
+                SqliteAlertSink(path, "https://example.invalid/hook").publish(payload)
+                payload["checked_at"] = "09:24:00"
+                SqliteAlertSink(path, "https://example.invalid/hook").publish(payload)
+                self.assertEqual(send.call_count, 1)
+            with sqlite3.connect(path) as db:
+                delivered = db.execute("SELECT delivered_at FROM alerts").fetchone()[0]
+            self.assertIsNotNone(delivered)
+
     def test_weekend_or_holiday_does_not_call_monitor(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
