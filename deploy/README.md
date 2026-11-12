@@ -56,3 +56,31 @@ Docker 可选安装 AKShare：`docker build --build-arg INSTALL_AKSHARE=1 -t sto
 
 
 可选 Webhook 告警：设置环境变量 `STOCK_AUTO_ALERT_WEBHOOK` 为接收 JSON POST 的 HTTPS 地址。服务会先将事件写入 SQLite outbox，再发送；失败会记录错误并在后续轮询重试，成功事件不会因进程重启重复发送。不要把含密钥的 webhook URL 提交到仓库或日志。此接口是通用 JSON webhook，不内置企业微信/钉钉的签名算法或消息模板，使用前需确认目标端接受本项目 JSON 结构。
+
+
+## 东方财富优先的实时监控
+
+安装核心包后直接运行（实时接口使用 Python 标准库，无需 AKShare SDK）：
+
+```bash
+stock-auto serve-live \
+  --daily-csv data/daily.csv \
+  --universe-csv data/universe.csv \
+  --start-date 2024-01-01 \
+  --calendar-csv data/trading-calendar.csv \
+  --positions-csv data/positions.csv \
+  --poll-interval 30 \
+  --max-data-age 120 \
+  --auction-db runtime/auction-history.sqlite3 \
+  --market-data-jsonl runtime/market-data.jsonl
+```
+
+`serve-akshare` 仍作为兼容别名。实时源优先级是东方财富 → 腾讯 → 新浪；腾讯/新浪只兜底普通报价。竞价和五档盘口只认东方财富源，源时间戳超时或缺失时禁止新入场。09:25 最终集合竞价在东财分时数据的 09:26 源时间标签中落地，服务窗口延长至 09:27 用于接收该记录。
+
+竞昨量比按今日最终竞价匹配成交量除以最近一个已归档交易日竞价匹配成交量计算。第一次部署没有历史基准时该字段为空；必须连续运行至少两个交易日。运行过程中生成：
+- `runtime/auction-history.sqlite3`：每只股票每天最终竞价成交量；
+- `runtime/market-data.jsonl`：行情快照、五档盘口、竞价数据、数据源和时间戳；
+- `runtime/health.json`：监控健康状态；
+- `runtime/alerts.sqlite3`：告警 outbox。
+
+免费公开接口无 SLA，建议先用小规模股票池连续跑至少 5 个交易日，统计源切换次数、数据缺失率、请求耗时和时间戳延迟。该服务保持只读，不会下单。
