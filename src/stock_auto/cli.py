@@ -333,8 +333,14 @@ def main(argv=None) -> int:
                     snapshot.fund_flow_kind = flow.get("flow_kind")
                     snapshot.fund_flow_source_timestamp = flow.get("source_timestamp")
                 if auction:
-                    snapshot.auction_pct = ((auction["auction_price"] / snapshot.prev_close - 1) * 100
-                                             if snapshot.prev_close else None)
+                    final_price = auction.get("auction_price")
+                    indicative_price = auction.get("indicative_price")
+                    snapshot.auction_pct = ((final_price / snapshot.prev_close - 1) * 100
+                                             if final_price and snapshot.prev_close else None)
+                    snapshot.auction_indicative_price = indicative_price
+                    snapshot.auction_indicative_pct = ((indicative_price / snapshot.prev_close - 1) * 100
+                                                        if indicative_price and snapshot.prev_close else None)
+                    snapshot.auction_indicative_source_timestamp = auction.get("indicative_source_timestamp")
                     snapshot.auction_volume_ratio = auction.get("auction_volume_ratio")
                     snapshot.auction_matched_volume = auction.get("auction_volume_shares")
                     snapshot.auction_amount = auction.get("auction_amount_cny")
