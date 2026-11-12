@@ -419,6 +419,35 @@ class EastmoneyTencentRealtimeProvider:
                         observation["source_timestamp"] = indicative["indicative_source_timestamp"]
                         observation["logical_auction_time"] = "indicative"
                         observation["auction_volume_ratio"] = None
+                    # Store every returned point-in-time row. The API only returns
+                    # a bounded intraday series, so this is an observed sample archive,
+                    # not a claim of complete second-by-second order history.
+                    for sample in rows:
+                        parts = str(sample).split(",")
+                        if len(parts) < 7 or not parts[0].startswith(trade_date):
+                            continue
+                        stamp = parts[0].strip()
+                        clock = stamp[-5:]
+                        sample_price = _number(parts[2])
+                        if not ("09:15" <= clock <= "09:25") or not _valid_price(sample_price):
+                            continue
+                        self.auction_history.record_observation({
+                            "symbol": symbol, "trade_date": trade_date,
+                            "source_timestamp": stamp, "logical_auction_time": clock,
+                            "indicative_price": sample_price,
+                            "source": "eastmoney.trends2",
+                        })
+                    if final_match:
+                        self.auction_history.record_observation({
+                            "symbol": symbol, "trade_date": trade_date,
+                            "source_timestamp": final_match["source_timestamp"],
+                            "logical_auction_time": "09:25",
+                            "indicative_price": indicative.get("indicative_price") if indicative else None,
+                            "auction_price": final_match["auction_price"],
+                            "auction_volume_shares": final_match["auction_volume_shares"],
+                            "auction_amount_cny": final_match["auction_amount_cny"],
+                            "source": "eastmoney.trends2",
+                        })
                     result[symbol] = observation
             except Exception:
                 LOG.exception("Eastmoney auction observation failed for %s", symbol)
