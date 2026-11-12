@@ -182,6 +182,8 @@ class EastmoneyTencentRealtimeProvider:
                         "best_ask_price": asks[0]["price"] if asks else None,
                         "book_imbalance": ((bid_total - ask_total) / (bid_total + ask_total))
                             if bid_total + ask_total else None,
+                        "bid_levels": len(bids), "ask_levels": len(asks),
+                        "complete": len(bids) == 5 and len(asks) == 5,
                         "captured_at": self.clock().isoformat(), "source_timestamp": _parse_source_timestamp(data.get("f86")), "source": "eastmoney.stock.get",
                         "levels": 5,
                     }
