@@ -108,7 +108,7 @@ def main(argv=None) -> int:
 
     args = parser.parse_args(argv)
     if args.command == "sync-akshare":
-        from .akshare_provider import AkshareMarketDataProvider
+        from .realtime_provider import EastmoneyTencentRealtimeProvider
         provider = AkshareMarketDataProvider()
         bars = provider.get_bars(_symbols(args.universe_csv), args.start_date, args.end_date)
         output = Path(args.output)
@@ -153,7 +153,7 @@ def main(argv=None) -> int:
         symbols = _symbols(args.universe_csv)
         calendar = TradingCalendar.from_csv(args.calendar_csv)
         daily = CsvMarketDataProvider(args.daily_csv)
-        live = AkshareMarketDataProvider()
+        live = EastmoneyTencentRealtimeProvider()
         monitor = MarketMonitor()
 
         def monitor_cycle(trade_date, checked_at):
@@ -179,22 +179,48 @@ def main(argv=None) -> int:
                             float(row["highest_price"]) if row.get("highest_price") else None,
                             float(row["cost_basis"]) if row.get("cost_basis") else None)
 
-            quotes = {item["symbol"]: item for item in live.get_spot_quotes(set(signals) | set(positions))}
+            watch_symbols = set(signals) | set(positions)
+            quotes = {item["symbol"]: item for item in live.get_quotes(watch_symbols)}
+            books = live.get_order_books(watch_symbols)
+            auctions = live.get_auction_observations(watch_symbols, trade_date)
             snapshots = {}
             for symbol in sorted(set(signals) | set(positions)):
                 if symbol not in by_symbol:
                     continue
                 snapshot = build_snapshot(by_symbol[symbol])
                 quote = quotes.get(symbol)
+                book = books.get(symbol)
+                auction = auctions.get(symbol)
                 snapshot.trade_date = trade_date
                 if quote and quote.get("price") is not None:
                     snapshot.price = quote["price"]
                     snapshot.close = quote["price"]
                     snapshot.pct_change = quote.get("pct_change")
+                    snapshot.prev_close = quote.get("prev_close") or snapshot.prev_close
+                    snapshot.vwap = quote.get("vwap")
+                    snapshot.intraday_volume_ratio = quote.get("intraday_volume_ratio")
+                    snapshot.quote_source = quote.get("source")
+                    snapshot.quote_captured_at = quote.get("captured_at")
                 else:
                     # Never fall back to yesterday's close for a live exit decision.
                     snapshot.price = None
                     snapshot.close = None
+                if book:
+                    snapshot.best_bid_price = book.get("best_bid_price")
+                    snapshot.best_ask_price = book.get("best_ask_price")
+                    snapshot.bid_depth_shares = book.get("bid_depth_shares")
+                    snapshot.ask_depth_shares = book.get("ask_depth_shares")
+                    snapshot.order_book_imbalance = book.get("book_imbalance")
+                    snapshot.order_book_source = book.get("source")
+                    snapshot.order_book_captured_at = book.get("captured_at")
+                if auction:
+                    snapshot.auction_pct = ((auction["auction_price"] / snapshot.prev_close - 1) * 100
+                                             if snapshot.prev_close else None)
+                    snapshot.auction_volume_ratio = auction.get("auction_volume_ratio")
+                    snapshot.auction_matched_volume = auction.get("auction_volume_shares")
+                    snapshot.auction_amount = auction.get("auction_amount_cny")
+                    snapshot.auction_source = auction.get("source")
+                    snapshot.auction_source_timestamp = auction.get("source_timestamp")
                 snapshots[symbol] = snapshot
 
             # Missing market breadth forces cautious exposure. Missing auction/VWAP
@@ -215,7 +241,7 @@ def main(argv=None) -> int:
                                  max_backoff_seconds=max(60.0, args.poll_interval))
         signal.signal(signal.SIGINT, lambda *_: service.stop())
         signal.signal(signal.SIGTERM, lambda *_: service.stop())
-        print("Starting read-only AKShare monitor. Auction/VWAP are unavailable; new entries remain blocked.")
+        print("Starting Eastmoney-first live monitor with Tencent/Sina quote fallback. Auction and order-book data are Eastmoney-only; missing fields fail closed.")
         service.run_forever()
         return 0
 
