@@ -361,10 +361,11 @@ class EastmoneyTencentRealtimeProvider:
             return None
 
     def get_auction_observations(self, symbols: Iterable[str], trade_date: str) -> dict[str, dict[str, Any]]:
-        """Read the final 09:25 auction match from the Eastmoney 09:26 trend row.
+        """Capture live indicative auction price and the final 09:25 matched result.
 
-        Eastmoney's source label is 09:26 for the final 09:25 match. Earlier virtual
-        indicative rows have zero matched volume and are intentionally ignored.
+        Eastmoney labels the final 09:25 match as 09:26. Rows from 09:15 through
+        09:25 are retained only as indicative price observations; their virtual
+        volume is never used to calculate matched-volume ratios.
         """
         result: dict[str, dict[str, Any]] = {}
         for raw in sorted(set(symbols)):
@@ -377,6 +378,8 @@ class EastmoneyTencentRealtimeProvider:
                      "ut": UT},
                 )
                 rows = ((payload.get("data") or {}).get("trends") or [])
+                indicative = None
+                final_match = None
                 for raw_row in rows:
                     parts = str(raw_row).split(",")
                     if len(parts) < 7:
@@ -385,20 +388,38 @@ class EastmoneyTencentRealtimeProvider:
                     if not stamp.startswith(trade_date):
                         continue
                     clock = stamp[-5:]
-                    volume_hands = _number(parts[5])
                     price = _number(parts[2])
+                    volume_hands = _number(parts[5])
                     amount = _number(parts[6])
+                    if "09:15" <= clock <= "09:25" and _valid_price(price):
+                        indicative = {
+                            "indicative_price": price,
+                            "indicative_source_timestamp": stamp,
+                            "indicative_volume_shares": volume_hands * 100
+                                if volume_hands is not None and volume_hands > 0 else None,
+                        }
                     if clock == "09:26" and volume_hands is not None and volume_hands > 0 and _valid_price(price):
                         volume_shares = volume_hands * 100
-                        result[symbol] = {
-                            "symbol": symbol, "trade_date": trade_date,
+                        final_match = {
                             "logical_auction_time": "09:25", "source_timestamp": stamp,
                             "auction_price": price, "auction_volume_shares": volume_shares,
                             "auction_amount_cny": amount,
                             "auction_volume_ratio": self.auction_history.record(symbol, trade_date, volume_shares),
-                            "source": "eastmoney.trends2",
                         }
-                        break
+                if final_match or indicative:
+                    observation = {
+                        "symbol": symbol, "trade_date": trade_date,
+                        "source": "eastmoney.trends2",
+                    }
+                    if indicative:
+                        observation.update(indicative)
+                    if final_match:
+                        observation.update(final_match)
+                    else:
+                        observation["source_timestamp"] = indicative["indicative_source_timestamp"]
+                        observation["logical_auction_time"] = "indicative"
+                        observation["auction_volume_ratio"] = None
+                    result[symbol] = observation
             except Exception:
                 LOG.exception("Eastmoney auction observation failed for %s", symbol)
         return result
