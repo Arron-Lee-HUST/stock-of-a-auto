@@ -186,6 +186,10 @@ def main(argv=None) -> int:
                     snapshot.price = quote["price"]
                     snapshot.close = quote["price"]
                     snapshot.pct_change = quote.get("pct_change")
+                else:
+                    # Never fall back to yesterday's close for a live exit decision.
+                    snapshot.price = None
+                    snapshot.close = None
                 snapshots[symbol] = snapshot
 
             # Missing market breadth forces cautious exposure. Missing auction/VWAP
