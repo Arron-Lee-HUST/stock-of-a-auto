@@ -41,6 +41,9 @@ class MarketSnapshot:
     sector_leader_limit_up: bool | None = None
     catalyst: bool | None = None
     auction_pct: float | None = None
+    auction_indicative_pct: float | None = None
+    auction_indicative_price: float | None = None
+    auction_indicative_source_timestamp: str | None = None
     auction_volume_ratio: float | None = None
     price: float | None = None
     vwap: float | None = None
