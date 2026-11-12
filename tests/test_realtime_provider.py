@@ -49,6 +49,34 @@ class RealtimeProviderTests(unittest.TestCase):
             self.assertEqual(book["asks"][0]["volume_shares"], 15000)
             self.assertAlmostEqual(book["book_imbalance"], -1 / 7)
 
+
+    def test_tencent_is_used_when_eastmoney_quote_has_no_valid_source_time(self):
+        fields = [""] * 38
+        fields[1], fields[2], fields[3] = "浦发银行", "600000", "10.5"
+        fields[4], fields[5] = "10.24", "10.2"
+        fields[30], fields[31] = "2026-11-12", "09:30:00"
+        fields[32], fields[33], fields[34] = "2.54", "10.6", "10.1"
+        fields[36], fields[37] = "100", "1050"
+
+        def transport(url, headers, timeout):
+            if "ulist.np/get" in url:
+                return {"data": {"diff": [{
+                    "f12": "600000", "f13": "1", "f2": "10.5", "f3": "2.5",
+                    "f5": "100", "f6": "105000", "f17": "10.2", "f18": "10.24",
+                }]}}
+            if "qt.gtimg.cn" in url:
+                return ('v_sh600000="' + "~".join(fields) + '";').encode("gbk")
+            raise AssertionError(url)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            provider = EastmoneyTencentRealtimeProvider(
+                transport=transport, min_interval_seconds=0,
+                clock=lambda: datetime(2026, 11, 12, 9, 30, tzinfo=ZoneInfo("Asia/Shanghai")),
+                auction_db_path=str(Path(tmp) / "auction.sqlite3"))
+            quote = provider.get_quotes(["sh600000"])[0]
+            self.assertEqual(quote["source"], "tencent")
+            self.assertEqual(quote["source_timestamp"], "2026-11-12T09:30:00+08:00")
+
     def test_eastmoney_batch_quote_is_primary(self):
         def transport(url, headers, timeout):
             return {"data": {"diff": [{
