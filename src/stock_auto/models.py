@@ -51,7 +51,9 @@ class MarketSnapshot:
     order_book_source: str | None = None
     auction_source: str | None = None
     quote_captured_at: str | None = None
+    quote_source_timestamp: str | None = None
     order_book_captured_at: str | None = None
+    order_book_source_timestamp: str | None = None
     auction_source_timestamp: str | None = None
     market_limit_up_count: int | None = None
     market_limit_down_count: int | None = None
