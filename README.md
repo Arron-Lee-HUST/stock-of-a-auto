@@ -102,7 +102,7 @@ print(signal.eligible, signal.score, signal.reasons, signal.warnings)
 
 ## 项目阶段\n\n完整阶段交付与生产化边界见 [docs/roadmap.md](docs/roadmap.md)。\n\n## 重要边界
 
-当前版本不绑定行情供应商，不含新闻爬虫、券商交易接口或自动下单。数据接入和回测假设详见 `docs/data-backtest.md`。当前回测是研究级日频框架，交易日历、个股特殊涨跌幅规则、复权处理和费用参数仍需按数据源与实际交易规则校准。
+当前版本已接入东方财富实时行情、腾讯报价/盘口兜底和新浪报价备用，并保留 AKShare/Tushare 日线适配器；不含新闻爬虫、券商交易接口或自动下单。数据接入和回测假设详见 `docs/data-backtest.md`。当前回测是研究级日频框架，交易日历、个股特殊涨跌幅规则、复权处理和费用参数仍需按数据源与实际交易规则校准。
 
 
 ## 实时行情：东方财富优先，腾讯/新浪兜底
@@ -131,4 +131,4 @@ stock-auto sync-calendar-akshare --output data/trading-calendar.csv
 
 此接口提供已公布的历史交易日列表；上线前仍须确认文件包含当天，未包含时监控会安全停止。
 
-实时监控默认最多逐只轮询评分前 30 个候选和全部持仓，采集东方财富五档盘口、最终竞价数据、分钟资金流估算；普通报价按东财→腾讯→新浪降级。可用 `--max-candidates` 与 `--source-min-interval` 控制请求规模和限频。
+实时监控默认最多逐只轮询评分前 25 个候选和全部持仓，采集东方财富五档盘口、最终竞价数据、分钟资金流估算；普通报价按东财→腾讯→新浪降级。可用 `--max-candidates` 与 `--source-min-interval` 控制请求规模和限频。
