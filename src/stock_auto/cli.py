@@ -88,6 +88,16 @@ def main(argv=None) -> int:
     spot_ak.add_argument("--universe-csv")
     spot_ak.add_argument("--output", default="runtime/akshare-spot.csv")
 
+    serve_ak = commands.add_parser("serve-akshare", help="run read-only AKShare polling with fail-closed entry signals")
+    serve_ak.add_argument("--daily-csv", required=True, help="cached normalized daily bars")
+    serve_ak.add_argument("--universe-csv", required=True)
+    serve_ak.add_argument("--start-date", required=True)
+    serve_ak.add_argument("--calendar-csv", required=True, help="authoritative trade_date CSV")
+    serve_ak.add_argument("--positions-csv")
+    serve_ak.add_argument("--poll-interval", type=float, default=30.0)
+    serve_ak.add_argument("--alerts-db", default="runtime/alerts.sqlite3")
+    serve_ak.add_argument("--health", default="runtime/health.json")
+
     paper = commands.add_parser("paper-replay", help="replay pre-approved paper orders against daily bars")
     paper.add_argument("--daily-csv", required=True)
     paper.add_argument("--orders-csv", required=True)
@@ -125,6 +135,69 @@ def main(argv=None) -> int:
             writer.writeheader()
             writer.writerows(quotes)
         print(f"AKShare spot snapshot complete: {len(quotes)} rows -> {output}")
+        return 0
+
+    if args.command == "serve-akshare":
+        from datetime import date, timedelta
+        from .akshare_provider import AkshareMarketDataProvider
+        from .service import MonitorService, TradingCalendar, SqliteAlertSink
+        from .monitor import MarketMonitor
+        from .models import MarketSnapshot, TradePosition
+        from .scanner import CandidateScanner, build_snapshot
+
+        symbols = _symbols(args.universe_csv)
+        calendar = TradingCalendar.from_csv(args.calendar_csv)
+        daily = CsvMarketDataProvider(args.daily_csv)
+        live = AkshareMarketDataProvider()
+        monitor = MarketMonitor()
+
+        def monitor_cycle(trade_date, checked_at):
+            history_bars = daily.get_bars(symbols, args.start_date, trade_date)
+            completed_dates = sorted({bar.trade_date for bar in history_bars if bar.trade_date < trade_date})
+            if not completed_dates:
+                raise RuntimeError("no completed daily bars before current trade date")
+            signal_date = completed_dates[-1]
+            scan = CandidateScanner().scan(history_bars, signal_date)
+            signals = {item.signal.symbol: item.signal for item in scan.candidates}
+            by_symbol = {}
+            for bar in history_bars:
+                if bar.trade_date <= signal_date:
+                    by_symbol.setdefault(bar.symbol, []).append(bar)
+
+            positions = {}
+            if args.positions_csv:
+                with Path(args.positions_csv).open("r", encoding="utf-8-sig", newline="") as stream:
+                    for row in csv.DictReader(stream):
+                        positions[row["symbol"]] = TradePosition(
+                            row["symbol"], float(row["entry_price"]), int(row["quantity"]),
+                            row.get("entry_date", ""),
+                            float(row["highest_price"]) if row.get("highest_price") else None,
+                            float(row["cost_basis"]) if row.get("cost_basis") else None)
+
+            quotes = {item["symbol"]: item for item in live.get_spot_quotes(set(signals) | set(positions))}
+            snapshots = {}
+            for symbol in sorted(set(signals) | set(positions)):
+                if symbol not in by_symbol:
+                    continue
+                snapshot = build_snapshot(by_symbol[symbol])
+                quote = quotes.get(symbol)
+                snapshot.trade_date = trade_date
+                if quote and quote.get("price") is not None:
+                    snapshot.price = quote["price"]
+                    snapshot.close = quote["price"]
+                    snapshot.pct_change = quote.get("pct_change")
+                snapshots[symbol] = snapshot
+
+            # Missing market breadth forces cautious exposure. Missing auction/VWAP
+            # fields deliberately prevent any buy action from this spot-only adapter.
+            market = MarketSnapshot(symbol="market", trade_date=trade_date)
+            return monitor.evaluate(trade_date, checked_at, snapshots, signals, positions, market)
+
+        service = MonitorService(calendar, monitor_cycle, SqliteAlertSink(args.alerts_db),
+                                 args.health, interval_seconds=args.poll_interval,
+                                 max_backoff_seconds=max(60.0, args.poll_interval))
+        print("Starting read-only AKShare monitor. Auction/VWAP are unavailable; new entries remain blocked.")
+        service.run_forever()
         return 0
 
     if args.command == "validate-data":
