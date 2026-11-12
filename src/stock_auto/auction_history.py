@@ -14,9 +14,9 @@ class AuctionHistoryStore:
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with sqlite3.connect(self.path) as db:
-            db.execute("CREATE TABLE IF NOT EXISTS auction_volume (
+            db.execute("""CREATE TABLE IF NOT EXISTS auction_volume (
                 symbol TEXT NOT NULL, trade_date TEXT NOT NULL,
-                volume_shares REAL NOT NULL, PRIMARY KEY(symbol, trade_date))")
+                volume_shares REAL NOT NULL, PRIMARY KEY(symbol, trade_date))""")
 
     def record(self, symbol: str, trade_date: str, volume_shares: float) -> float | None:
         if volume_shares <= 0:
