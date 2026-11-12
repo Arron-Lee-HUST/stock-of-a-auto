@@ -99,6 +99,8 @@ def main(argv=None) -> int:
     serve_ak.add_argument("--auction-db", default="runtime/auction-history.sqlite3")
     serve_ak.add_argument("--request-timeout", type=float, default=6.0)
     serve_ak.add_argument("--source-min-interval", type=float, default=0.18)
+    serve_ak.add_argument("--max-data-age", type=float, default=120.0)
+    serve_ak.add_argument("--market-data-jsonl", default="runtime/market-data.jsonl")
     serve_ak.add_argument("--health", default="runtime/health.json")
     serve_ak.add_argument("--log-file", default="runtime/service.log")
     serve_ak.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
@@ -162,6 +164,19 @@ def main(argv=None) -> int:
         monitor = MarketMonitor()
 
         def monitor_cycle(trade_date, checked_at):
+            from dataclasses import asdict
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+            now_local = datetime.now(ZoneInfo("Asia/Shanghai"))
+            def source_is_fresh(value):
+                if not value:
+                    return False
+                try:
+                    age = (now_local - datetime.fromisoformat(value)).total_seconds()
+                    return -5 <= age <= args.max_data_age
+                except (TypeError, ValueError):
+                    return False
+
             history_bars = daily.get_bars(symbols, args.start_date, trade_date)
             completed_dates = sorted({bar.trade_date for bar in history_bars if bar.trade_date < trade_date})
             if not completed_dates:
@@ -197,7 +212,7 @@ def main(argv=None) -> int:
                 book = books.get(symbol)
                 auction = auctions.get(symbol)
                 snapshot.trade_date = trade_date
-                if quote and quote.get("price") is not None:
+                if quote and quote.get("price") is not None and source_is_fresh(quote.get("source_timestamp")):
                     snapshot.price = quote["price"]
                     snapshot.close = quote["price"]
                     snapshot.pct_change = quote.get("pct_change")
@@ -206,11 +221,12 @@ def main(argv=None) -> int:
                     snapshot.intraday_volume_ratio = quote.get("intraday_volume_ratio")
                     snapshot.quote_source = quote.get("source")
                     snapshot.quote_captured_at = quote.get("captured_at")
+                    snapshot.quote_source_timestamp = quote.get("source_timestamp")
                 else:
                     # Never fall back to yesterday's close for a live exit decision.
                     snapshot.price = None
                     snapshot.close = None
-                if book:
+                if book and source_is_fresh(book.get("source_timestamp")):
                     snapshot.best_bid_price = book.get("best_bid_price")
                     snapshot.best_ask_price = book.get("best_ask_price")
                     snapshot.bid_depth_shares = book.get("bid_depth_shares")
@@ -218,6 +234,7 @@ def main(argv=None) -> int:
                     snapshot.order_book_imbalance = book.get("book_imbalance")
                     snapshot.order_book_source = book.get("source")
                     snapshot.order_book_captured_at = book.get("captured_at")
+                    snapshot.order_book_source_timestamp = book.get("source_timestamp")
                 if auction:
                     snapshot.auction_pct = ((auction["auction_price"] / snapshot.prev_close - 1) * 100
                                              if snapshot.prev_close else None)
@@ -227,6 +244,12 @@ def main(argv=None) -> int:
                     snapshot.auction_source = auction.get("source")
                     snapshot.auction_source_timestamp = auction.get("source_timestamp")
                 snapshots[symbol] = snapshot
+
+            archive_path = Path(args.market_data_jsonl)
+            archive_path.parent.mkdir(parents=True, exist_ok=True)
+            with archive_path.open("a", encoding="utf-8") as archive:
+                for snapshot in snapshots.values():
+                    archive.write(json.dumps({"checked_at": checked_at, **asdict(snapshot)}, ensure_ascii=False) + "\\n")
 
             # Market breadth is still unavailable from this lightweight collector;
             # missing auction, VWAP, or five-level book fields fail closed.
