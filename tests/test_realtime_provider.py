@@ -29,8 +29,27 @@ class RealtimeProviderTests(unittest.TestCase):
             auction = result["sh600000"]
             self.assertEqual(auction["logical_auction_time"], "09:25")
             self.assertEqual(auction["auction_price"], 10.6)
+            self.assertEqual(auction["indicative_price"], 10.1)
             self.assertEqual(auction["auction_volume_shares"], 100000)
             self.assertAlmostEqual(auction["auction_volume_ratio"], 2.0)
+
+
+    def test_live_auction_indicative_price_is_available_before_final_volume(self):
+        def transport(url, headers, timeout):
+            return {"data": {"trends": [
+                "2026-11-12 09:20,10.2,10.3,10.3,10.2,0,0,0",
+                "2026-11-12 09:24,10.2,10.4,10.4,10.2,0,0,0",
+            ]}}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            provider = EastmoneyTencentRealtimeProvider(
+                transport=transport, min_interval_seconds=0,
+                auction_db_path=str(Path(tmp) / "auction.sqlite3"))
+            observation = provider.get_auction_observations(["sh600000"], "2026-11-12")["sh600000"]
+            self.assertEqual(observation["indicative_price"], 10.4)
+            self.assertEqual(observation["logical_auction_time"], "indicative")
+            self.assertIsNone(observation["auction_volume_ratio"])
+            self.assertNotIn("auction_price", observation)
 
     def test_order_book_maps_eastmoney_five_levels_and_imbalance(self):
         requests = []
