@@ -104,6 +104,17 @@ class RealtimeProviderTests(unittest.TestCase):
             self.assertEqual(flow["source_timestamp"], "2026-11-12T09:31:00+08:00")
             self.assertEqual(flow["flow_kind"], "vendor_estimated_order_size_aggregate")
 
+
+    def test_market_stats_returns_none_when_limit_pool_payload_is_incomplete(self):
+        def transport(url, headers, timeout):
+            return {"data": {}}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            provider = EastmoneyTencentRealtimeProvider(
+                transport=transport, min_interval_seconds=0,
+                auction_db_path=str(Path(tmp) / "auction.sqlite3"))
+            self.assertIsNone(provider.get_market_stats("2026-11-12"))
+
     def test_market_stats_uses_limit_pools_and_streak(self):
         def transport(url, headers, timeout):
             if "getTopicZTPool" in url:
