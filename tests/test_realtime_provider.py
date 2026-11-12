@@ -33,7 +33,9 @@ class RealtimeProviderTests(unittest.TestCase):
             self.assertAlmostEqual(auction["auction_volume_ratio"], 2.0)
 
     def test_order_book_maps_eastmoney_five_levels_and_imbalance(self):
+        requests = []
         def transport(url, headers, timeout):
+            requests.append(url)
             return {"data": {
                 "f19": "10.00", "f20": "100", "f17": "9.99", "f18": "200",
                 "f39": "10.01", "f40": "150", "f37": "10.02", "f38": "250",
@@ -48,6 +50,8 @@ class RealtimeProviderTests(unittest.TestCase):
             self.assertEqual(book["bids"][0]["volume_shares"], 10000)
             self.assertEqual(book["asks"][0]["volume_shares"], 15000)
             self.assertAlmostEqual(book["book_imbalance"], -1 / 7)
+            self.assertIn("f120", requests[0])
+            self.assertIn("f39", requests[0])
 
 
 
