@@ -55,6 +55,25 @@ class RealtimeProviderTests(unittest.TestCase):
 
 
 
+
+    def test_intraday_fund_flow_reads_latest_minute_and_keeps_vendor_estimate_label(self):
+        def transport(url, headers, timeout):
+            return {"data": {"klines": [
+                "2026-11-12 09:30,10,1,2,3,4",
+                "2026-11-12 09:31,20,2,3,4,5",
+            ]}}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            provider = EastmoneyTencentRealtimeProvider(
+                transport=transport, min_interval_seconds=0,
+                auction_db_path=str(Path(tmp) / "auction.sqlite3"))
+            flow = provider.get_fund_flows(["sh600000"], "2026-11-12")["sh600000"]
+            self.assertEqual(flow["main_net_inflow"], 20)
+            self.assertEqual(flow["small_net"], 2)
+            self.assertEqual(flow["super_big_net"], 5)
+            self.assertEqual(flow["source_timestamp"], "2026-11-12T09:31:00+08:00")
+            self.assertEqual(flow["flow_kind"], "vendor_estimated_order_size_aggregate")
+
     def test_market_stats_uses_limit_pools_and_streak(self):
         def transport(url, headers, timeout):
             if "getTopicZTPool" in url:
