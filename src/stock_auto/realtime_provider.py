@@ -297,7 +297,8 @@ class EastmoneyTencentRealtimeProvider:
                 return None
             return self._normalize_quote(symbol, fields[3], None, fields[1], fields[2],
                                          fields[4], fields[5], fields[8], fields[9],
-                                         "sina", self.clock().isoformat(), volume_unit="shares",\n                                         source_timestamp=_parse_source_timestamp((fields[30] + " " + fields[31]) if len(fields) > 31 else None))
+                                         "sina", self.clock().isoformat(), volume_unit="shares",
+                                         source_timestamp=_parse_source_timestamp((fields[30] + " " + fields[31]) if len(fields) > 31 else None))
         except Exception:
             LOG.exception("Sina fallback quote failed for %s", symbol)
             return None
