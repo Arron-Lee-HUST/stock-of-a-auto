@@ -149,7 +149,7 @@ def main(argv=None) -> int:
         import os
         import signal
         from logging.handlers import RotatingFileHandler
-        from .akshare_provider import AkshareMarketDataProvider
+        from .realtime_provider import EastmoneyTencentRealtimeProvider
         from .service import MonitorService, TradingCalendar, SqliteAlertSink
         from .monitor import MarketMonitor
         from .models import MarketSnapshot, TradePosition
