@@ -43,6 +43,11 @@ class StrategyTests(unittest.TestCase):
         snapshot = self.candidate(
             auction_pct=1.5, auction_volume_ratio=1.8, price=10.9,
             vwap=10.7, intraday_volume_ratio=1.3,
+            auction_source_timestamp="2026-11-12T09:26:00+08:00",
+            quote_source_timestamp="2026-11-12T09:31:00+08:00",
+            order_book_source_timestamp="2026-11-12T09:31:00+08:00",
+            order_book_complete=True, order_book_imbalance=0.1,
+            bid_depth_shares=10000, ask_depth_shares=9000,
         )
         decision = evaluate_entry(snapshot, evaluate_candidate(snapshot))
         self.assertEqual(decision.action, "buy")
