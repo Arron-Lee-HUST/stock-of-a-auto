@@ -133,6 +133,7 @@ def main(argv=None) -> int:
     serve_ak.add_argument("--request-timeout", type=float, default=6.0)
     serve_ak.add_argument("--source-min-interval", type=float, default=0.18)
     serve_ak.add_argument("--max-data-age", type=float, default=120.0)
+    serve_ak.add_argument("--max-candidates", type=int, default=50)
     serve_ak.add_argument("--market-data-jsonl", default="runtime/market-data.jsonl")
     serve_ak.add_argument("--health", default="runtime/health.json")
     serve_ak.add_argument("--log-file", default="runtime/service.log")
@@ -233,7 +234,7 @@ def main(argv=None) -> int:
                 raise RuntimeError("no completed daily bars before current trade date")
             signal_date = completed_dates[-1]
             scan = CandidateScanner().scan(history_bars, signal_date)
-            signals = {item.signal.symbol: item.signal for item in scan.candidates}
+            signals = {item.signal.symbol: item.signal for item in scan.candidates[:args.max_candidates]}
             by_symbol = {}
             for bar in history_bars:
                 if bar.trade_date <= signal_date:
